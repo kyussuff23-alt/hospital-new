@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Login from "./Login";
+import Login from "./login";
 import Register from "./Register";
 
 export default function AuthPage({ setIsAuthenticated }) {
