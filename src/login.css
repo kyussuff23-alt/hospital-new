@@ -1,0 +1,21 @@
+
+/* src/login.css */
+
+/* Reset root styles for login page */
+.login-page {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* Center the card using grid */
+.login-row {
+  min-height: 100vh; /* full screen height */
+}
+
+/* Card styling */
+.login-card {
+  border-radius: 8px;
+  background-color: #fff;
+}
