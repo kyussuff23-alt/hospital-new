@@ -12,7 +12,10 @@ export default function Provider() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [error, setError] = useState("");
-useEffect(() => {
+
+
+
+  useEffect(() => {
   fetchHospitals();
 }, []);
 

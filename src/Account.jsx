@@ -205,7 +205,28 @@ if (uploadedBill !== expectedBill) {
  
  
   // ✅ Check bankname
-  const validBanks = ["GTBank", "Access Bank", "Zenith Bank", "UBA"];
+  const validBanks = [
+    "Access Bank",
+    "Ecobank",
+    "FCMB",
+    "Fidelity",
+    "First Bank",
+    "GTBank",
+    "Polaris Bank",
+    "Stanbic IBTC",
+    "Sterling Bank",
+    "Union Bank",
+    "UBA",
+    "Unity Bank Plc",
+    "Wema Bank",
+    "Zenith Bank",
+    "Kuda Bank",
+    "Opay",
+    "Moniepoint",
+    "Palmpay",
+    "FairMoney MFB",
+    "Lapo Microfinance Bank",
+  ];
   if (!validBanks.includes(row.bankname)) {
     errors.push(`Row ${rowNumber}: Invalid bank name (${row.bankname})`);
     return false;

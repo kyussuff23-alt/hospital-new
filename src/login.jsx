@@ -25,7 +25,7 @@ export default function Login({ onSwitchToRegister, setIsAuthenticated }) {
 
       // If login succeeds, Supabase persists the session automatically
       setError("");
-      if (setIsAuthenticated) setIsAuthenticated(true);
+      if (setIsAuthenticated) setIsAuthenticated(true); //this is where real isAuthenticted start
       navigate("/dashboard");
     } catch (err) {
       setError("Something went wrong. Please try again.");

@@ -214,15 +214,27 @@ async function handleSubmit(e) {
                   >
                     <option value="">Select Bank</option>
                     <option value="Access Bank">Access Bank</option>
-                    <option value="Zenith Bank">Zenith Bank</option>
-                    <option value="GTBank">GTBank</option>
-                    <option value="UBA">UBA</option>
+                    <option value="Ecobank">Ecobank</option>
+                    <option value="FCMB">First City Monument Bank</option>
+                   
+                   <option value="Fidelity">Fidelity Bank Plc</option>
                     <option value="First Bank">First Bank</option>
+                    <option value="GTBank">GTBank</option>
+                     <option value="Polaris Bank">Polaris Bank</option>
+                     <option value="Stanbic IBTC">Stanbic IBTC</option>
+                    <option value="Sterling Bank">Sterling Bank</option>
+                       <option value="Union Bank">Union Bank</option>
+                    
+                    <option value="UBA">UBA</option>
+                    <option value="Unity Bank Plc">Unity Bank</option>
+                      <option value="Wema Bank">Wema Bank</option>
+                    <option value="Zenith Bank">Zenith Bank</option>
+                    
                     <option value="Kuda Bank">Kuda Bank</option>
                     <option value="Opay">Opay</option>
                     <option value="Moniepoint">Moniepoint</option>
                     <option value="PalmPay">PalmPay</option>
-                    <option value="FCMB">First City Monument Bank</option>
+                    
                     <option value="FairMoney MFB">FairMoney MFB</option>
                     <option value="Lapo Microfinance Bank">Lapo Microfinance Bank</option>
                   </select>
