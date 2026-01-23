@@ -2,7 +2,7 @@ import { useState } from "react";
 import Login from "./login";
 import Register from "./Register";
 
-export default function Authpage({ setIsAuthenticated, setUserRole }) {
+export default function AuthPage({ setIsAuthenticated, setUserRole }) {
   const [isRegister, setIsRegister] = useState(false);
 
   return (
