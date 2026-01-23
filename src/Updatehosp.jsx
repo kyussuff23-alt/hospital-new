@@ -177,6 +177,7 @@ export default function Updatehosp({ hospital, onClose, onUpdated }) {
                     <option value="First Bank">First Bank</option>
                     <option value="GTBank">GTBank</option>
                      <option value="Polaris Bank">Polaris Bank</option>
+                       <option value="Providus Bank">Providus Bank</option>
                      <option value="Stanbic IBTC">Stanbic IBTC</option>
                     <option value="Sterling Bank">Sterling Bank</option>
                        <option value="Union Bank">Union Bank</option>

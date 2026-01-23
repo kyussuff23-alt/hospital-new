@@ -1,102 +1,87 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 
-export default function Register({ onSwitchToLogin, setIsAuthenticated, setUserRole }) {
+export default function Register({ setIsAuthenticated, setUserRole }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const navigate = useNavigate();
 
   async function handleRegister(e) {
     e.preventDefault();
+    setError("");
 
     try {
-      // ✅ Supabase handles password hashing internally
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+      const result = await supabase.auth.signUp({ email, password });
+      console.log("SignUp result:", result);
 
-      if (error) {
-        setError(error.message);
-        setSuccess("");
-      } else {
-        const userId = data.user?.id;
+      if (result.error) {
+        setError(result.error.message);
+        return;
+      }
 
-        if (userId) {
-          // Insert a default role (e.g., "claims") into your user_roles table
-          const { error: roleError } = await supabase
-            .from("user_roles")
-            .insert([{ user_id: userId, role: "claims" }]);
+      const user = result.data?.user || result.data?.session?.user;
+      if (!user) {
+        setError("Registration succeeded but no user object returned.");
+        return;
+      }
 
-          if (roleError) {
-            console.error("Error inserting role:", roleError.message);
-            setError("User registered but role assignment failed.");
-          } else {
-            setSuccess("User registered successfully!");
-            setUserRole("claims");          // ✅ update role immediately
-            setIsAuthenticated(true);      // ✅ mark as logged in
-          }
+      // Insert default role if setUserRole exists
+      if (typeof setUserRole === "function") {
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert([{ user_id: user.id, role: "claims" }]);
+
+        if (roleError) {
+          console.error("Error inserting role:", roleError.message);
+          setError("User registered but role assignment failed.");
+          return;
         }
 
-        // Reset form fields
-        setError("");
-        setEmail("");
-        setPassword("");
-
-        // Switch back to login after success
-        if (onSwitchToLogin) onSwitchToLogin();
+        setUserRole("claims");
       }
+
+      // Auto-login and go to Dashboard
+      setIsAuthenticated(true);
+      navigate("/dashboard");
     } catch (err) {
-      setError("Something went wrong during registration.");
-      setSuccess("");
+      console.error("Catch block error:", err);
+      setError("Unexpected error during registration.");
     }
   }
 
   return (
-    <div className="login-page">
-      <div className="container">
-        <div className="container d-flex justify-content-center align-items-center min-vh-100">
-          <div className="col-md-6 col-lg-4">
-            <div className="login-card shadow-lg p-4">
-              <h2 className="text-center mb-4">Register</h2>
-              {error && <div className="alert alert-danger">{error}</div>}
-              {success && <div className="alert alert-success">{success}</div>}
-              <form onSubmit={handleRegister}>
-                <div className="mb-3">
-                  <label className="form-label">Email address</label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Password</label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <button type="submit" className="btn btn-success w-100">
-                  Register
-                </button>
-              </form>
-              <p className="text-center mt-3">
-                Already have an account?{" "}
-                <button className="btn btn-link" onClick={onSwitchToLogin}>
-                  Login
-                </button>
-              </p>
+    <div className="container d-flex justify-content-center align-items-center min-vh-100">
+      <div className="col-md-6 col-lg-4">
+        <div className="login-card shadow-lg p-4">
+          <h2 className="text-center mb-4">Register</h2>
+          {error && <div className="alert alert-danger">{error}</div>}
+          <form onSubmit={handleRegister}>
+            <div className="mb-3">
+              <label className="form-label">Email address</label>
+              <input
+                type="email"
+                className="form-control"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
-          </div>
+            <div className="mb-3">
+              <label className="form-label">Password</label>
+              <input
+                type="password"
+                className="form-control"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <button type="submit" className="btn btn-success w-100">
+              Register
+            </button>
+          </form>
         </div>
       </div>
     </div>

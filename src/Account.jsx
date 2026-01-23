@@ -211,6 +211,7 @@ if (uploadedBill !== expectedBill) {
     "First Bank",
     "GTBank",
     "Polaris Bank",
+    "Providus Bank",
     "Stanbic IBTC",
     "Sterling Bank",
     "Union Bank",

@@ -67,8 +67,17 @@ export default function App() {
     <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, userRole, setUserRole }}>
       <Router>
         <Routes>
-          {/* Public AuthPage */}
-          <Route path="/" element={<AuthPage />} />
+         
+         {/* Public AuthPage */}
+<Route
+  path="/"
+  element={
+    <AuthPage
+      setIsAuthenticated={setIsAuthenticated}
+      setUserRole={setUserRole}
+    />
+  }
+/>
 
           {/* Protected Dashboard */}
           <Route
@@ -80,6 +89,9 @@ export default function App() {
             }
           />
 
+        
+        
+        
           {/* Protected Batch */}
           <Route
             path="/batch"
