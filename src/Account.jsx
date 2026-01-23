@@ -1,35 +1,40 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import Papa from "papaparse";
- import { jsPDF } from "jspdf";
-
+import { jsPDF } from "jspdf";
+import { useAuth } from "./AuthContext";
 import logo from "./logo.jpg"; // ✅ Place your logo image in src folder and import it
 
 export default function Account() {
+  const { userRole } = useAuth();
+  
+  // Log both the value and type for clarity
+  console.log("Account received userRole:", userRole);
+  console.log("Type of userRole:", typeof userRole);
+
   const [payments, setPayments] = useState([]);
   const [error, setError] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
-   const [searchTerm, setSearchTerm] = useState("");
-   const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [selectedPaymentId, setSelectedPaymentId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
 
+  const filteredPayments = payments.filter((p) =>
+    [p.hcpcode, p.batchnumber, p.hospname].some((field) =>
+      field?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  );
 
-const filteredPayments = payments.filter((p) =>
-  [p.hcpcode, p.batchnumber, p.hospname]
-    .some(field => field?.toLowerCase().includes(searchTerm.toLowerCase()))
-);
+  // Auto‑dismiss alert after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError("");
+      }, 5000); // 5 seconds
 
-
-// Auto‑dismiss alert after 5 seconds
-useEffect(() => {
-  if (error) {
-    const timer = setTimeout(() => {
-      setError("");
-    }, 5000); // 5 seconds
-
-    return () => clearTimeout(timer); // cleanup if component unmounts
-  }
-}, [error]);
+      return () => clearTimeout(timer); // cleanup if component unmounts
+    }
+  }, [error]);
 
   
 
@@ -118,9 +123,7 @@ function handleGenerateReceipt(payment) {
 
  
  
- 
- 
-  // Handle file upload
+// Handle file upload
   function handleFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -199,12 +202,7 @@ if (uploadedBill !== expectedBill) {
   );
   return false;
 }
-
-
- 
- 
- 
-  // ✅ Check bankname
+// ✅ Check bankname
   const validBanks = [
     "Access Bank",
     "Ecobank",

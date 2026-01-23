@@ -3,8 +3,15 @@ import { supabase } from "./supabaseClient";
 import Registerbatch from "./Registerbatch";
 import Updatebatch from "./Updatebatch";
 import * as XLSX from "xlsx";
+import { useAuth } from "./AuthContext";
+
 
 export default function Batch() {
+  const { userRole, isAuthenticated, setIsAuthenticated } = useAuth();
+
+
+  console.log("Batch received userRole:", userRole + typeof userRole);
+  
   const [batches, setBatches] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedBatch, setSelectedBatch] = useState(null);

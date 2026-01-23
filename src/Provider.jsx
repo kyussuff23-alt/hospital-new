@@ -95,12 +95,22 @@ function handleDownload() {
         >
           ➕ Register Hospital
         </button>
-        
+       
+       
+        {/* Solid, vibrant button showing total hospitals */}{" "}
+        <button
+          className="btn btn-warning fw-bold"
+          style={{ minWidth: "120px" }}
+          onClick={() =>
+            alert(`Total registered hospitals: ${hospitals.length}`)
+          }
+        >
+          {" "}
+          🏥 Total Hospital: {hospitals.length}{" "}
+        </button>
         <button className="btn btn-success ms-2" onClick={handleDownload}>
-  ⬇️ Download Excel
-</button>
-
-        
+          ⬇️ Download Excel
+        </button>
         <input
           type="text"
           className="form-control w-50"
@@ -112,84 +122,87 @@ function handleDownload() {
 
       {error && <div className="alert alert-danger">{error}</div>}
 
-    <div className="table-responsive" style={{ overflowX: "auto" }}>
-  <table className="table table-striped table-hover table-bordered">
-    <thead className="table-dark">
-      <tr>
-        <th>S/N</th>
-        <th>HCP Code</th>
-        <th>Name</th>
-        <th>Acct No</th>
-        <th>Acct Name</th>
-        <th>Phone</th>
-        <th>Location</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-   <tbody>
-  {currentHospitals.map((h, index) => (
-    <tr key={h.id}>
-      <td>{indexOfFirstRow + index + 1}</td>
-      <td>{h.hcpcode}</td>
-      <td>{h.name}</td>
-      <td>{h.acctno}</td>
-      <td>{h.acctname}</td>
-      <td>{h.phone}</td>
-      <td>{h.location}</td>
-      <td>
-        <button
-          className="btn btn-sm btn-warning me-2"
-          onClick={() => handleUpdate(h)}
-        >
-          Update
-        </button>
-        <button
-          className="btn btn-sm btn-danger"
-          onClick={() => handleDelete(h.id)}
-          
-        >
-          Delete
-        </button>
-      </td>
-    </tr>
-  ))}
-  {currentHospitals.length === 0 && (
-    <tr>
-      <td colSpan="8" className="text-center">
-        No hospitals found.
-      </td>
-    </tr>
-  )}
-</tbody>
-</table>
+      <div className="table-responsive" style={{ overflowX: "auto" }}>
+        <table className="table table-striped table-hover table-bordered">
+          <thead className="table-dark">
+            <tr>
+              <th>S/N</th>
+              <th>HCP Code</th>
+              <th>Name</th>
+              <th>Acct No</th>
+              <th>Acct Name</th>
+              <th>Phone</th>
+              <th>Location</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentHospitals.map((h, index) => (
+              <tr key={h.id}>
+                <td>{indexOfFirstRow + index + 1}</td>
+                <td>{h.hcpcode}</td>
+                <td>{h.name}</td>
+                <td>{h.acctno}</td>
+                <td>{h.acctname}</td>
+                <td>{h.phone}</td>
+                <td>{h.location}</td>
+                <td>
+                  <button
+                    className="btn btn-sm btn-warning me-2"
+                    onClick={() => handleUpdate(h)}
+                  >
+                    Update
+                  </button>
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={() => handleDelete(h.id)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {currentHospitals.length === 0 && (
+              <tr>
+                <td colSpan="8" className="text-center">
+                  No hospitals found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
 
-<div className="d-flex justify-content-between align-items-center mt-3">
-  <button
-    className="btn btn-secondary"
-    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-    disabled={currentPage === 1}
-  >
-    Previous
-  </button>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            className="btn btn-secondary"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </button>
 
-  <span>Page {currentPage} of {Math.ceil(filteredHospitals.length / rowsPerPage)}</span>
+          <span>
+            Page {currentPage} of{" "}
+            {Math.ceil(filteredHospitals.length / rowsPerPage)}
+          </span>
 
-  <button
-    className="btn btn-secondary"
-    onClick={() =>
-      setCurrentPage((prev) =>
-        prev < Math.ceil(filteredHospitals.length / rowsPerPage) ? prev + 1 : prev
-      )
-    }
-    disabled={currentPage === Math.ceil(filteredHospitals.length / rowsPerPage)}
-  >
-    Next
-  </button>
-</div>
-
-
-</div>
-
+          <button
+            className="btn btn-secondary"
+            onClick={() =>
+              setCurrentPage((prev) =>
+                prev < Math.ceil(filteredHospitals.length / rowsPerPage)
+                  ? prev + 1
+                  : prev,
+              )
+            }
+            disabled={
+              currentPage === Math.ceil(filteredHospitals.length / rowsPerPage)
+            }
+          >
+            Next
+          </button>
+        </div>
+      </div>
 
       {showUpdateModal && (
         <Updatehosp

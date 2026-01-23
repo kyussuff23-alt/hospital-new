@@ -3,12 +3,22 @@ import { useNavigate } from "react-router-dom";
 import Provider from "./Provider";
 import Batch from "./Batch";
 import Account from "./Account";
+import AuthPage from "./AuthPage";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import logo from "./assets/nonsuch.jpg";
 import { supabase } from "./supabaseClient"; // 👈 import Supabase client
+import { useAuth } from "./AuthContext";
 
-export default function Dashboard({ setIsAuthenticated }) {
+
+export default function Dashboard() {
+  
+  const { userRole, isAuthenticated, setIsAuthenticated } = useAuth();
+  
   const navigate = useNavigate();
+  
+  console.log("the type of this role is " + userRole + typeof userRole);
+  
+  
   const [activePage, setActivePage] = useState(null);
 
   async function handleLogout() {

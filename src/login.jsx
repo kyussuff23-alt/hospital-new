@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "./supabaseClient";
 import { useNavigate } from "react-router-dom";
 
-export default function Login({ onSwitchToRegister, setIsAuthenticated }) {
+export default function Login({ onSwitchToRegister, setIsAuthenticated, setUserRole }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -23,9 +23,32 @@ export default function Login({ onSwitchToRegister, setIsAuthenticated }) {
         return;
       }
 
-      // If login succeeds, Supabase persists the session automatically
       setError("");
-      if (setIsAuthenticated) setIsAuthenticated(true); //this is where real isAuthenticted start
+      if (setIsAuthenticated) setIsAuthenticated(true);
+
+      const user = data.user;
+      if (user) {
+        // ✅ Fetch role from user_roles table
+        const { data: roleData, error: roleError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+
+console.log("Fetched roleData:", roleData);       // shows the full object
+console.log("User role is:", roleData?.role);     // shows just the role string
+console.log("Role error:", roleError);
+
+
+
+          if (roleError) {
+          console.error("Error fetching role:", roleError.message);
+        } else if (roleData) {
+          if (setUserRole) setUserRole(roleData.role); // ✅ update role immediately
+        }
+      }
+
+      // ✅ Navigate to dashboard
       navigate("/dashboard");
     } catch (err) {
       setError("Something went wrong. Please try again.");
@@ -33,7 +56,7 @@ export default function Login({ onSwitchToRegister, setIsAuthenticated }) {
   }
 
   return (
-   <div className="container d-flex justify-content-center align-items-center min-vh-100">
+    <div className="container d-flex justify-content-center align-items-center min-vh-100">
       <div className="col-md-6 col-lg-4">
         <div className="card shadow-lg p-4">
           <h2 className="text-center mb-4">Login</h2>
