@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import AuthPage from "./AuthPage";
+import Authpage from "./Authpage";
 import Dashboard from "./Dashboard";
 import Batch from "./Batch";
 import Account from "./Account";
