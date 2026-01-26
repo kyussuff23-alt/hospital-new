@@ -7,6 +7,8 @@ import logo from "./logo.jpg"; // ✅ Place your logo image in src folder and im
 
 export default function Account() {
   const { userRole } = useAuth();
+const [showModal, setShowModal] = useState(false);
+  const handleUnauthorizedClick = () => { setShowModal(true); };
   
   // Log both the value and type for clarity
   console.log("Account received userRole:", userRole);
@@ -334,20 +336,75 @@ if (existing) {
       )}
 
       {/* Upload Payment Button */}
-      <button
-        className="btn btn-primary mb-3"
-        onClick={() => document.getElementById("fileInput").click()}
+     
+     
+  {userRole === "admin" ? (
+  <>
+    <button
+      className="btn btn-primary mb-3"
+      onClick={() => document.getElementById("fileInput").click()}
+    >
+      Upload Payment
+    </button>
+    <input
+      type="file"
+      id="fileInput"
+      accept=".csv,.xlsx"
+      style={{ display: "none" }}
+      onChange={handleFileUpload}
+    />
+  </>
+) : (
+  <>
+    <button
+      className="btn btn-secondary mb-3"
+      onClick={handleUnauthorizedClick}   // ✅ keep clickable
+    >
+      Upload Payment
+    </button>
+
+    {showModal && (
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000,
+        }}
       >
-        Upload Payment
-      </button>
-      <input
-        type="file"
-        id="fileInput"
-        accept=".csv,.xlsx"
-        style={{ display: "none" }}
-        onChange={handleFileUpload}
-      />
+        <div
+          style={{
+            background: "#fff",
+            padding: "20px",
+            borderRadius: "8px",
+            maxWidth: "400px",
+            textAlign: "center",
+          }}
+        >
+          <h4>Access Denied</h4>
+          <p>You are not authorised to perform this action.</p>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowModal(false)}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    )}
+  </>
+)}
+
        
+      
+      
+      
        <input
   type="text"
   className="form-control mb-3"
