@@ -8,9 +8,9 @@ import logo from "./assets/nonsuch.jpg";
 import { supabase } from "./supabaseClient";
 import { useAuth } from "./AuthContext";
 
-// Cloudinary config
-const CLOUD_NAME = "dqtqyiwt7"; // your cloud name
-const UPLOAD_PRESET = "UPLOAD_PRESET"; // the preset you created in Cloudinary
+// Cloudinary config from .env
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_NAME;
+const UPLOAD_PRESET = import.meta.env.VITE_UPLOAD_PRESET;
 const MAX_SIZE = 1024 * 1024; // 1 MB limit
 
 export default function Dashboard() {
@@ -20,33 +20,39 @@ export default function Dashboard() {
   const [activePage, setActivePage] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState("https://via.placeholder.com/50");
+  const [user, setUser] = useState(null);
 
-  // ✅ Fetch profile photo from Supabase on mount
+  // ✅ Fetch user once on mount
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) console.error("Error fetching user:", error.message);
+      setUser(user);
+    };
+    getUser();
+  }, []);
+
+  // ✅ Fetch profile photo once user is available
   useEffect(() => {
     const fetchProfilePhoto = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile, error } = await supabase
+        .from("profiles_photo")
+        .select("profile_photo_url")
+        .eq("id", user.id)
+        .single();
 
-      if (user) {
-        const { data: profile, error } = await supabase
-          .from("profiles_photo")
-          .select("profile_photo_url")
-          .eq("id", user.id)
-          .single();
+      if (error) {
+        console.error("Error fetching profile photo:", error.message);
+      }
 
-        if (error) {
-          console.error("Error fetching profile photo:", error.message);
-        }
-
-        if (profile?.profile_photo_url) {
-          setProfilePhoto(profile.profile_photo_url);
-        }
+      if (profile?.profile_photo_url) {
+        setProfilePhoto(profile.profile_photo_url);
       }
     };
 
     fetchProfilePhoto();
-  }, []);
+  }, [user]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -63,7 +69,6 @@ export default function Dashboard() {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Restrict file size
     if (file.size > MAX_SIZE) {
       alert("File must be smaller than 1 MB");
       return;
@@ -74,7 +79,6 @@ export default function Dashboard() {
       formData.append("file", file);
       formData.append("upload_preset", UPLOAD_PRESET);
 
-      // Upload to Cloudinary
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
         {
@@ -87,7 +91,6 @@ export default function Dashboard() {
       console.log("Cloudinary response:", cloudinaryData);
 
       const imageUrl = cloudinaryData.secure_url;
-
       if (!imageUrl) {
         alert("Upload failed: no URL returned from Cloudinary");
         return;
@@ -97,10 +100,6 @@ export default function Dashboard() {
       setProfilePhoto(imageUrl);
 
       // Save URL in Supabase
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
       if (user) {
         const { data, error } = await supabase
           .from("profiles_photo")
