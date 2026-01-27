@@ -224,6 +224,7 @@ async function handleSubmit(e) {
                       <option value="Providus Bank">Providus Bank</option>
                      <option value="Stanbic IBTC">Stanbic IBTC</option>
                     <option value="Sterling Bank">Sterling Bank</option>
+                      <option value="Suntrust Bank">Suntrust Bank</option>
                        <option value="Union Bank">Union Bank</option>
                     
                     <option value="UBA">UBA</option>
