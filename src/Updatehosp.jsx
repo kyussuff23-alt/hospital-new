@@ -55,6 +55,41 @@ export default function Updatehosp({ hospital, onClose, onUpdated }) {
                 />
               </div>
 
+           {/* Status Dropdown */}
+<div className="mb-3">
+  <label className="form-label">Status</label>
+  <select
+    className="form-select"
+    value={form.status || "active"}
+    onChange={(e) => setForm({ ...form, status: e.target.value })}
+    required
+  >
+    <option value="active">Active</option>
+    <option value="inactive">Inactive</option>
+  </select>
+</div>
+
+
+{/* Band Dropdown */}
+<div className="mb-3">
+  <label className="form-label">Band</label>
+  <select
+    className="form-select"
+    value={form.band || "Band A"}
+    onChange={(e) => setForm({ ...form, band: e.target.value })}
+    required
+  >
+    <option value="Band A">Band A</option>
+    <option value="Band B">Band B</option>
+    <option value="Band C">Band C</option>
+    <option value="Band D">Band D</option>
+    <option value="Band E">Band E</option>
+  </select>
+</div>
+
+           
+           
+           
               {/* Account Number */}
               <div className="mb-3">
                 <label className="form-label">ACCOUNT NUMBER</label>

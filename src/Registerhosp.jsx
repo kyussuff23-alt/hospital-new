@@ -14,6 +14,9 @@ export default function Registerhosp({ onClose, onRegistered }) {
     insurancetype: "",
     address: "",
     registerbank: "",
+    band: "Band A",
+    status:"active",
+    
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -111,6 +114,38 @@ async function handleSubmit(e) {
   />
 </div>
 
+ 
+<div className="mb-3">
+  <label className="form-label">Status</label>
+  <select
+    className="form-select"
+    value={form.status}
+    onChange={(e) => setForm({ ...form, status: e.target.value })}
+    required
+  >
+    <option value="active">Active</option>
+    <option value="inactive">Inactive</option>
+  </select>
+</div>
+
+
+<div className="mb-3">
+  <label className="form-label">Band</label>
+  <select
+    className="form-select"
+    value={form.band}
+    onChange={(e) => setForm({ ...form, band: e.target.value })}
+    required
+  >
+    <option value="Band A">Band A</option>
+    <option value="Band B">Band B</option>
+    <option value="Band C">Band C</option>
+    <option value="Band D">Band D</option>
+    <option value="Band E">Band E</option>
+  </select>
+</div>
+
+ 
  <div className="mb-3">
                   <label className="form-label">ACCOUNT NUMBER</label>
                   <input
