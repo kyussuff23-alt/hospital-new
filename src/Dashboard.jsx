@@ -7,6 +7,10 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import logo from "./assets/nonsuch.jpg";
 import { supabase } from "./supabaseClient";
 import { useAuth } from "./AuthContext";
+import Utilization from "./Utilization";
+import GroupEnrolment from "./GroupEnrolment";
+import Enrolment from "./Enrolment";
+
 
 // Cloudinary config from .env
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_NAME;
@@ -187,14 +191,42 @@ export default function Dashboard() {
           <i className="bi bi-file-earmark-medical display-4 text-danger"></i>
           <p className="small">Claims</p>
         </div>
-        <div className="col-4 col-md-2" onClick={() => setActivePage("underwriting")}>
-          <i className="bi bi-shield-check display-4 text-info"></i>
-          <p className="small">Underwriting</p>
-        </div>
-        <div className="col-4 col-md-2" onClick={() => setActivePage("groupEnrolment")}>
-          <i className="bi bi-people display-4 text-secondary"></i>
-          <p className="small">Group Enrolment</p>
-        </div>
+    
+      {/* Underwriting with dropdown */}
+<div className="col-4 col-md-2 dropdown">
+  <div
+    className="d-flex flex-column align-items-center"
+    data-bs-toggle="dropdown"
+    style={{ cursor: "pointer" }}
+  >
+    <i className="bi bi-shield-check display-4 text-info"></i>
+    <p className="small mb-0">Underwriting</p>
+  </div>
+
+  <ul
+    className="dropdown-menu shadow rounded border-0 p-2"
+    style={{ minWidth: "180px" }}
+  >
+    <li>
+      <button
+        className="dropdown-item rounded mb-1"
+        onClick={() => setActivePage("underwriting")}
+      >
+        <i className="bi bi-shield-check me-2 text-info"></i> Utilization Reporting
+      </button>
+    </li>
+    <li>
+      <button
+        className="dropdown-item rounded"
+        onClick={() => setActivePage("groupEnrolment")}
+      >
+        <i className="bi bi-people me-2 text-secondary"></i> Group Enrolment
+      </button>
+    </li>
+  </ul>
+</div>
+
+      
         <div className="col-4 col-md-2" onClick={() => setActivePage("enrolment")}>
           <i className="bi bi-pencil-square display-4 text-dark"></i>
           <p className="small">Enrolment</p>
@@ -206,12 +238,16 @@ export default function Dashboard() {
       </div>
 
       {/* Dynamic content */}
-      <div className="mt-4">
-        {activePage === "provider" && <Provider />}
-        {activePage === "batch" && <Batch />}
-        {activePage === "account" && <Account />}
-        {/* Add components for Claims, Underwriting, Group Enrolment, Enrolment, Authorization */}
-      </div>
+  <div className="mt-4">
+  {activePage === "provider" && <Provider />}
+  {activePage === "batch" && <Batch />}
+  {activePage === "account" && <Account />}
+  {activePage === "underwriting" && <Utilization />}
+  {activePage === "groupEnrolment" && <GroupEnrolment />}
+   {activePage === "enrolment" && <Enrolment />}
+  {/* Add other components as needed */}
+</div>
+
     </div>
   );
 }

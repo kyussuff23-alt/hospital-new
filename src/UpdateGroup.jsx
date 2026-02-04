@@ -1,0 +1,135 @@
+import { useState } from "react";
+import { supabase } from "./supabaseClient";
+
+export default function UpdateGroup({ group, onClose, onUpdated }) {
+  const [form, setForm] = useState(group);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    const payload = {
+      ...form,
+      agelimit: form.agelimit ? parseInt(form.agelimit, 10) : null,
+      premium: form.premium ? parseFloat(form.premium) : null,
+    };
+
+    const { error } = await supabase
+      .from("mygroup")
+      .update(payload)
+      .eq("id", group.id);
+
+    if (error) {
+      console.error("Supabase update error:", error);
+    } else {
+      onUpdated();
+      onClose();
+    }
+  }
+
+  return (
+    <div className="modal d-block">
+      <div className="modal-dialog">
+        <div className="modal-content">
+          <form onSubmit={handleSubmit}>
+            <div className="modal-header">
+              <h5 className="modal-title">Update Group</h5>
+              <button type="button" className="btn-close" onClick={onClose}></button>
+            </div>
+            <div className="modal-body">
+              <input
+                className="form-control mb-2"
+                placeholder="Enter client name"
+                value={form.name || ""}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
+
+              <input
+                className="form-control mb-2"
+                placeholder="Enter policy status (e.g. Active, Pending)"
+                value={form.policystatus || ""}
+                onChange={(e) => setForm({ ...form, policystatus: e.target.value })}
+              />
+
+              <input
+                className="form-control mb-2"
+                placeholder="Enter plan(s) e.g. Standard, Silver, Gold"
+                value={form.plan || ""}
+                onChange={(e) => setForm({ ...form, plan: e.target.value })}
+              />
+
+              <input
+                type="date"
+                className="form-control mb-2"
+                placeholder="Select premium start date"
+                value={form.premiumstart || ""}
+                onChange={(e) => setForm({ ...form, premiumstart: e.target.value })}
+              />
+
+              <input
+                type="date"
+                className="form-control mb-2"
+                placeholder="Select premium end date"
+                value={form.premiumend || ""}
+                onChange={(e) => setForm({ ...form, premiumend: e.target.value })}
+              />
+
+              <input
+                type="date"
+                className="form-control mb-2"
+                placeholder="Select effective date"
+                value={form.effectivedate || ""}
+                onChange={(e) => setForm({ ...form, effectivedate: e.target.value })}
+              />
+
+              <input
+                type="number"
+                className="form-control mb-2"
+                placeholder="Enter age limit"
+                value={form.agelimit || ""}
+                onChange={(e) => setForm({ ...form, agelimit: e.target.value })}
+              />
+
+              <input
+                className="form-control mb-2"
+                placeholder="Enter family status (e.g. Single, Family)"
+                value={form.familystatus || ""}
+                onChange={(e) => setForm({ ...form, familystatus: e.target.value })}
+              />
+
+             <input
+  type="number"
+  className="form-control mb-2"
+  placeholder="Enter premium amount"
+  value={form.premium || ""}
+  onChange={(e) => setForm({ ...form, premium: e.target.value })}
+/>
+
+             
+             
+              <input
+                className="form-control mb-2"
+                placeholder="Enter band(s) allowed (e.g. Band A, Band B)"
+                value={form.bandallowed || ""}
+                onChange={(e) => setForm({ ...form, bandallowed: e.target.value })}
+              />
+
+              <select
+                className="form-select mb-2"
+                value={form.activate || "Active"}
+                onChange={(e) => setForm({ ...form, activate: e.target.value })}
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+            <div className="modal-footer">
+              <button type="submit" className="btn btn-primary">Save</button>
+              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}

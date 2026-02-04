@@ -8,52 +8,61 @@ export default function Login({ onSwitchToRegister, setIsAuthenticated, setUserR
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  async function handleLogin(e) {
-    e.preventDefault();
+ async function handleLogin(e) {
+  e.preventDefault();
 
-    try {
-      // ✅ Supabase handles authentication internally
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+  try {
+    // Step 1: Authenticate
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) {
-        setError("Invalid email or password.");
-        return;
-      }
-
-      setError("");
-      if (setIsAuthenticated) setIsAuthenticated(true);
-
-      const user = data.user;
-      if (user) {
-        // ✅ Fetch role from user_roles table
-        const { data: roleData, error: roleError } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .single();
-
-console.log("Fetched roleData:", roleData);       // shows the full object
-console.log("User role is:", roleData?.role);     // shows just the role string
-console.log("Role error:", roleError);
-
-
-
-          if (roleError) {
-          console.error("Error fetching role:", roleError.message);
-        } else if (roleData) {
-          if (setUserRole) setUserRole(roleData.role); // ✅ update role immediately
-        }
-      }
-
-      // ✅ Navigate to dashboard
-      navigate("/dashboard");
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
+    if (error) {
+      setError("Invalid email or password.");
+      return;
     }
+
+    setError("");
+    if (setIsAuthenticated) setIsAuthenticated(true);
+
+    // Step 2: Get user from session
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) {
+      console.error("Error fetching user:", userError.message);
+      setError("Could not fetch user.");
+      return;
+    }
+
+    // Step 3: Fetch role
+    const { data: roleData, error: roleError } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (roleError) {
+      console.error("Error fetching role:", roleError.message);
+      setError("Role assignment failed.");
+      return;
+    }
+
+    if (roleData && setUserRole) {
+      setUserRole(roleData.role);
+    }
+
+    // Step 4: Navigate only after role is set
+    navigate("/dashboard");
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    setError("Something went wrong. Please try again.");
   }
+}
+
 
   return (
     <div className="container d-flex justify-content-center align-items-center min-vh-100">
