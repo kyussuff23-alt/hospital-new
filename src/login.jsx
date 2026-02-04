@@ -26,19 +26,15 @@ export default function Login({ onSwitchToRegister, setIsAuthenticated, setUserR
     setError("");
     if (setIsAuthenticated) setIsAuthenticated(true);
 
-    // Step 2: Get user from session
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    // ✅ Get user directly from the response
+    const user = data.user ?? data.session?.user;
 
-    if (userError) {
-      console.error("Error fetching user:", userError.message);
+    if (!user) {
       setError("Could not fetch user.");
       return;
     }
 
-    // Step 3: Fetch role
+    // Step 2: Fetch role
     const { data: roleData, error: roleError } = await supabase
       .from("user_roles")
       .select("role")
@@ -55,7 +51,7 @@ export default function Login({ onSwitchToRegister, setIsAuthenticated, setUserR
       setUserRole(roleData.role);
     }
 
-    // Step 4: Navigate only after role is set
+    // Step 3: Navigate only after role is set
     navigate("/dashboard");
   } catch (err) {
     console.error("Unexpected error:", err);
