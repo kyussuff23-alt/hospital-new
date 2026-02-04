@@ -8,11 +8,14 @@ export default function Login({ onSwitchToRegister, setIsAuthenticated, setUserR
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
- async function handleLogin(e) {
+let isLoggingIn = false;
+
+async function handleLogin(e) {
   e.preventDefault();
+  if (isLoggingIn) return;
+  isLoggingIn = true;
 
   try {
-    // Step 1: Authenticate
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -26,15 +29,12 @@ export default function Login({ onSwitchToRegister, setIsAuthenticated, setUserR
     setError("");
     if (setIsAuthenticated) setIsAuthenticated(true);
 
-    // ✅ Get user directly from the response
     const user = data.user ?? data.session?.user;
-
     if (!user) {
       setError("Could not fetch user.");
       return;
     }
 
-    // Step 2: Fetch role
     const { data: roleData, error: roleError } = await supabase
       .from("user_roles")
       .select("role")
@@ -51,11 +51,12 @@ export default function Login({ onSwitchToRegister, setIsAuthenticated, setUserR
       setUserRole(roleData.role);
     }
 
-    // Step 3: Navigate only after role is set
     navigate("/dashboard");
   } catch (err) {
     console.error("Unexpected error:", err);
     setError("Something went wrong. Please try again.");
+  } finally {
+    isLoggingIn = false;
   }
 }
 
