@@ -11,6 +11,7 @@ export default function UpdateGroup({ group, onClose, onUpdated }) {
       ...form,
       agelimit: form.agelimit ? parseInt(form.agelimit, 10) : null,
       premium: form.premium ? parseFloat(form.premium) : null,
+      dependantage: form.dependantage || null,
     };
 
     const { error } = await supabase
@@ -61,7 +62,6 @@ export default function UpdateGroup({ group, onClose, onUpdated }) {
               <input
                 type="date"
                 className="form-control mb-2"
-                placeholder="Select premium start date"
                 value={form.premiumstart || ""}
                 onChange={(e) => setForm({ ...form, premiumstart: e.target.value })}
               />
@@ -69,7 +69,6 @@ export default function UpdateGroup({ group, onClose, onUpdated }) {
               <input
                 type="date"
                 className="form-control mb-2"
-                placeholder="Select premium end date"
                 value={form.premiumend || ""}
                 onChange={(e) => setForm({ ...form, premiumend: e.target.value })}
               />
@@ -77,7 +76,6 @@ export default function UpdateGroup({ group, onClose, onUpdated }) {
               <input
                 type="date"
                 className="form-control mb-2"
-                placeholder="Select effective date"
                 value={form.effectivedate || ""}
                 onChange={(e) => setForm({ ...form, effectivedate: e.target.value })}
               />
@@ -97,21 +95,26 @@ export default function UpdateGroup({ group, onClose, onUpdated }) {
                 onChange={(e) => setForm({ ...form, familystatus: e.target.value })}
               />
 
-             <input
-  type="number"
-  className="form-control mb-2"
-  placeholder="Enter premium amount"
-  value={form.premium || ""}
-  onChange={(e) => setForm({ ...form, premium: e.target.value })}
-/>
+              <input
+                type="number"
+                className="form-control mb-2"
+                placeholder="Enter premium amount"
+                value={form.premium || ""}
+                onChange={(e) => setForm({ ...form, premium: e.target.value })}
+              />
 
-             
-             
               <input
                 className="form-control mb-2"
                 placeholder="Enter band(s) allowed (e.g. Band A, Band B)"
                 value={form.bandallowed || ""}
                 onChange={(e) => setForm({ ...form, bandallowed: e.target.value })}
+              />
+
+              <input
+                className="form-control mb-2"
+                placeholder="Enter dependant age (e.g. 18, 21)"
+                value={form.dependantage || ""}
+                onChange={(e) => setForm({ ...form, dependantage: e.target.value })}
               />
 
               <select

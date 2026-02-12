@@ -30,6 +30,7 @@ const [familyStatusOptions, setFamilyStatusOptions] = useState([]);
     address: "",
     photopart: "", // Cloudinary photo URL
     provider:"",
+    dateofbirth : "",
   });
 
  
@@ -182,22 +183,41 @@ async function handleClientChange(e) {
   setFormDisabled(false);
   setForm({ ...form, client: selected });
 
-  // ✅ Provider logic: bandallowed → hospitals (single query)
-  if (data?.bandallowed) {
-    const bands = data.bandallowed.split(",").map(b => b.trim());
-    const { data: hospData, error: hospError } = await supabase
-      .from("myhospitals")
-      .select("name")
-      .in("band", bands);
+// ✅ Provider logic: bandallowed → hospitals (with cascading rules)
+if (data?.bandallowed) {
+  let bands = [];
 
-    if (!hospError && hospData) {
-      setHospitalOptions(hospData.map(h => h.name));
-    } else {
-      setHospitalOptions([]);
-    }
+  switch (data.bandallowed.trim()) {
+    case "Band A":
+      bands = ["Band A", "Band B", "Band C", "Band D"];
+      break;
+    case "Band B":
+      bands = ["Band B", "Band C", "Band D"];
+      break;
+    case "Band C":
+      bands = ["Band C", "Band D"];
+      break;
+    case "Band D":
+      bands = ["Band D"];
+      break;
+    default:
+      bands = [data.bandallowed.trim()]; // fallback
+  }
+
+  const { data: hospData, error: hospError } = await supabase
+    .from("myhospitals")
+    .select("name")
+    .in("band", bands);
+
+  if (!hospError && hospData) {
+    setHospitalOptions(hospData.map(h => h.name));
   } else {
     setHospitalOptions([]);
   }
+} else {
+  setHospitalOptions([]);
+}
+
 
   // ✅ Plan logic
   if (data?.plan) {
@@ -216,9 +236,7 @@ async function handleClientChange(e) {
   }
 }
 
-
-
-  // Handle enrollee name (capitalize each word)
+ // Handle enrollee name (capitalize each word)
 
 
   function handleNameChange(e) {
@@ -403,7 +421,21 @@ async function handleSave() {
               <input type="text" disabled = {formDisabled} className="form-control" value={form.oldpolicy} onChange={e => setForm({ ...form, oldpolicy: e.target.value })} />
             </div>
 
-    {/* Family Status */}
+ <div className="mb-3">
+  <label className="form-label">Date of Birth</label>
+  <input
+    type="date"
+    className="form-control"
+    name="dateofbirth"
+    value={form.dateofbirth}
+    onChange={(e) => setForm({ ...form, dateofbirth: e.target.value })}
+    required
+  />
+</div>
+
+
+   
+  {/* Family Status */}
 {/* Family Status */}
 <div className="mb-3">
   <label className="form-label">Family Status</label>
@@ -458,8 +490,7 @@ async function handleSave() {
 
 
            
-           
-            {/* Gender */}
+         {/* Gender */}
             <div className="mb-3">
               <label className="form-label">Gender</label>
               <select className="form-select" disabled = {formDisabled} value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}>

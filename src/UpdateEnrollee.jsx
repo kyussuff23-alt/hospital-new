@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
-import AddDependant from "./AddDependant"; // import the new file
+import AddDependant from "./AddDependant";
 
 export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
+  // --- State declarations ---
   const [clients, setClients] = useState([]);
   const [hospitalOptions, setHospitalOptions] = useState([]);
   const [planOptions, setPlanOptions] = useState([]);
@@ -10,6 +11,9 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
   const [error, setError] = useState("");
   const [formDisabled, setFormDisabled] = useState(false);
   const [showDependantModal, setShowDependantModal] = useState(false);
+  const [familyStatus, setFamilyStatus] = useState("");
+  const [nextDependantPolicyId, setNextDependantPolicyId] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
 
   const [form, setForm] = useState(
     enrollee || {
@@ -26,46 +30,87 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
       address: "",
       photopart: "",
       provider: "",
-    },
+      dateofbirth: "",
+    }
   );
 
-  const [photoFile, setPhotoFile] = useState(null);
-
-  // ✅ Prefill form when enrollee changes
-  useEffect(() => {
-    if (enrollee) {
-      setForm(enrollee);
-      if (enrollee.client) {
-        handleClientPrefill(enrollee.client);
-      }
-    }
-  }, [enrollee]);
-
-  // ✅ Fetch clients list
-  useEffect(() => {
-    async function fetchClients() {
-      const { data, error } = await supabase
-        .from("mygroup")
-        .select("name, activate");
-      if (!error && data) {
-        setClients(data.map((d) => ({ name: d.name, activate: d.activate })));
-      }
-    }
-    fetchClients();
-  }, []);
-
-  
-
- // handler when dependant is added successfully
-  function handleDependantAdded() {
-    setShowDependantModal(false);
-    onUpdated(); // refresh enrollee list
+  // --- Handlers ---
+ async function handleAddDependantClick() {
+  if (!enrollee?.policyid || !enrollee?.client || !familyStatus) {
+    setError("Missing enrollee information");
+    return;
   }
 
- 
+  try {
+    // 1. Extract family number
+    const parts = enrollee.policyid.split("/");
+    const familyNumber = parts.find(seg => /^\d{6}$/.test(seg));
+    if (!familyNumber) {
+      setError("Invalid policy ID format");
+      return;
+    }
 
+    // 2. Block if family status is "Single"
+    const status = familyStatus.toLowerCase();
+    if (status.includes("single")) {
+      setError("Your package cannot allow addition of dependant.");
+      return;
+    }
 
-  // ✅ Handle client change
+    // 3. Determine max dependants allowed
+    let maxIndex = 1; // default for family of 2
+    if (status.includes("family of 3")) maxIndex = 2;
+    else if (status.includes("family of 4")) maxIndex = 3;
+    else if (status.includes("family of 5")) maxIndex = 4;
+    else if (status.includes("family of 6")) maxIndex = 5;
+
+    // 4. Scan table for existing dependants
+    const { data: dependants, error } = await supabase
+      .from("myenrolment")
+      .select("policyid")
+      .like("policyid", `%/${familyNumber}/%`)
+      .eq("client", enrollee.client);
+
+    if (error) {
+      console.error("Error checking dependants:", error.message);
+      setError("Could not verify dependants");
+      return;
+    }
+
+    // 5. Find highest index already used
+    let highestIndex = 0;
+    if (dependants && dependants.length > 0) {
+      dependants.forEach(d => {
+        const segs = d.policyid.split("/");
+        const idx = parseInt(segs[segs.length - 2], 10); // index before plan prefix
+        if (!isNaN(idx) && idx > highestIndex) {
+          highestIndex = idx;
+        }
+      });
+    }
+
+    // 6. Check quota
+    if (highestIndex >= maxIndex) {
+      setError("You cannot add dependant again. Family quota reached.");
+      return;
+    }
+
+    // 7. Allow next dependant
+    const nextIndex = highestIndex + 1;
+    const nextId = enrollee.policyid.replace("/0/", `/${nextIndex}/`);
+    setNextDependantPolicyId(nextId);
+    setShowDependantModal(true);
+    setError("");
+  } catch (err) {
+    setError(err.message);
+  }
+}
+
+  function handleDependantAdded() {
+    setShowDependantModal(false);
+    onUpdated();
+  }
+
   async function handleClientChange(e) {
     const selected = e.target.value;
     setForm({ ...form, client: selected });
@@ -103,7 +148,6 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
     setError("");
     setFormDisabled(false);
 
-    // ✅ Provider logic
     if (data?.bandallowed) {
       const bands = data.bandallowed.split(",").map((b) => b.trim());
       const { data: hospData, error: hospError } = await supabase
@@ -120,7 +164,6 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
       setHospitalOptions([]);
     }
 
-    // ✅ Plan logic
     if (data?.plan) {
       const plans = data.plan.split(",").map((p) => p.trim());
       setPlanOptions(plans);
@@ -128,16 +171,17 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
       setPlanOptions([]);
     }
 
-    // ✅ Family Status logic
     if (data?.familystatus) {
       const statuses = data.familystatus.split(",").map((fs) => fs.trim());
       setFamilyStatusOptions(statuses);
+
+      if (statuses.length === 1) {
+        setForm({ ...form, familystatus: statuses[0] });
+      }
     } else {
       setFamilyStatusOptions([]);
     }
   }
-
-  // ✅ Name capitalization
   function handleNameChange(e) {
     const value = e.target.value
       .split(" ")
@@ -146,7 +190,6 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
     setForm({ ...form, enrolleename: value });
   }
 
-  // ✅ Policy ID generation
   function generatePolicyId(client, plan) {
     if (!client || !plan) return "";
     const randomSix = Math.floor(100000 + Math.random() * 900000);
@@ -160,7 +203,6 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
     setForm({ ...form, plan, policyid });
   }
 
-  // ✅ Photo select
   function handlePhotoSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -173,7 +215,7 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
     setPhotoFile(file);
     setError("");
   }
-  // ✅ Save enrollee (update instead of insert)
+
   async function handleSave() {
     setError("");
 
@@ -200,7 +242,7 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
       try {
         const res = await fetch(
           `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_NAME}/image/upload`,
-          { method: "POST", body: formData },
+          { method: "POST", body: formData }
         );
         const data = await res.json();
         if (data.secure_url) {
@@ -231,260 +273,316 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
     }
   }
 
-  return (
-    <div className={`modal fade ${show ? "show d-block" : ""}`} tabIndex="-1">
-      <div className="modal-dialog modal-lg">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Update Enrollee</h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={onClose}
-            ></button>
+  // --- Effects ---
+  useEffect(() => {
+    if (enrollee) {
+      setForm(enrollee); // prefill all fields
+      if (enrollee.client) {
+        handleClientPrefill(enrollee.client); // fetch dropdown options
+      }
+    }
+  }, [enrollee]);
+
+  useEffect(() => {
+    async function fetchClients() {
+      const { data, error } = await supabase
+        .from("mygroup")
+        .select("name, activate");
+      if (!error && data) {
+        setClients(data.map(d => ({ name: d.name, activate: d.activate })));
+      }
+    }
+    fetchClients();
+  }, []);
+
+    useEffect(() => {
+    async function fetchFamilyStatus() {
+      if (!enrollee?.policyid || !enrollee?.client) return;
+
+      const { data, error } = await supabase
+        .from("myenrolment")
+        .select("familystatus")
+        .eq("policyid", enrollee.policyid)
+        .eq("client", enrollee.client)
+        .single();
+
+      if (error) {
+        console.error("Error fetching family status:", error.message);
+        setError("Failed to fetch family status");
+        return;
+      }
+
+      if (data) {
+        setFamilyStatus(data.familystatus);
+        setError("");
+      }
+    }
+
+    fetchFamilyStatus();
+  }, [enrollee]);
+
+  // --- Return JSX ---
+  if (!show) return null;
+
+return (
+  <div className={`modal fade ${show ? "show d-block" : ""}`} tabIndex="-1">
+    <div className="modal-dialog modal-lg">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">Update Enrollee</h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={onClose}
+          ></button>
+        </div>
+
+        <div className="modal-body">
+          {error && <div className="alert alert-danger">{error}</div>}
+          {/* Client */}{" "}
+          <div className="mb-3">
+            {" "}
+            <label className="form-label">Client</label>{" "}
+            <select
+              name="client"
+              value={form.client || ""}
+              onChange={handleClientChange}
+              className="form-select"
+              disabled
+            >
+              {" "}
+              <option value="">Select Client</option>{" "}
+              {clients.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {" "}
+                  {c.name}{" "}
+                </option>
+              ))}{" "}
+            </select>{" "}
           </div>
-          <div className="modal-body">
-            {error && <div className="alert alert-danger">{error}</div>}
-
-            {/* Client */}
-            <div className="mb-3">
-              <label className="form-label">Client</label>
-              <select
-                name="client"
-                value={form.client || ""}
-                onChange={handleClientChange}
-                className="form-select"
-              >
-                <option value="">Select Client</option>
-                {clients.map((c) => (
-                  <option key={c.name} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Enrollee Name */}
-            <div className="mb-3">
-              <label className="form-label">Enrollee Name</label>
-              <input
-                type="text"
-                name="enrolleename"
-                value={form.enrolleename || ""}
-                onChange={handleNameChange}
-                className="form-control"
-              />
-            </div>
-
-            {/* Old Policy */}
-            <div className="mb-3">
-              <label className="form-label">Old Policy</label>
-              <input
-                type="text"
-                name="oldpolicy"
-                value={form.oldpolicy || ""}
-                onChange={(e) =>
-                  setForm({ ...form, oldpolicy: e.target.value })
-                }
-                className="form-control"
-              />
-            </div>
-
-            {/* Policy ID */}
-            <div className="mb-3">
-              <label className="form-label">Policy ID</label>
-              <input
-                type="text"
-                name="policyid"
-                value={form.policyid || ""}
-                readOnly
-                className="form-control"
-              />
-            </div>
-
-            {/* Family Status */}
-            <div className="mb-3">
-              <label className="form-label">Family Status</label>
-              <select
-                name="familystatus"
-                value={form.familystatus || ""}
-                onChange={(e) =>
-                  setForm({ ...form, familystatus: e.target.value })
-                }
-                className="form-select"
-                disabled={formDisabled}
-              >
-                <option value="">Select Family Status</option>
-                {familyStatusOptions.map((fs) => (
-                  <option key={fs} value={fs}>
-                    {fs}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Plan */}
-            <div className="mb-3">
-              <label className="form-label">Plan</label>
-              <select
-                name="plan"
-                value={form.plan || ""}
-                onChange={handlePlanChange}
-                className="form-select"
-                disabled={formDisabled}
-              >
-                <option value="">Select Plan</option>
-                {planOptions.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Provider */}
-            <div className="mb-3">
-              <label className="form-label">Provider</label>
-              <select
-                name="provider"
-                value={form.provider || ""}
-                onChange={(e) => setForm({ ...form, provider: e.target.value })}
-                className="form-select"
-                disabled={formDisabled}
-              >
-                <option value="">Select Provider</option>
-                {hospitalOptions.map((h) => (
-                  <option key={h} value={h}>
-                    {h}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Gender */}
-            <div className="mb-3">
-              <label className="form-label">Gender</label>
-              <select
-                name="gender"
-                value={form.gender || ""}
-                onChange={(e) => setForm({ ...form, gender: e.target.value })}
-                className="form-select"
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </select>
-            </div>
-
-            {/* Marital Status */}
-            <div className="mb-3">
-              <label className="form-label">Marital Status</label>
-              <select
-                name="maritalstatus"
-                value={form.maritalstatus || ""}
-                onChange={(e) =>
-                  setForm({ ...form, maritalstatus: e.target.value })
-                }
-                className="form-select"
-              >
-                <option value="">Select Marital Status</option>
-                <option value="Single">Single</option>
-                <option value="Married">Married</option>
-              </select>
-            </div>
-
-            {/* Phone Number */}
-            <div className="mb-3">
-              <label className="form-label">Phone Number</label>
-              <input
-                type="text"
-                name="phonenumber"
-                value={form.phonenumber || ""}
-                onChange={(e) =>
-                  setForm({ ...form, phonenumber: e.target.value })
-                }
-                className="form-control"
-              />
-            </div>
-
-            {/* Email */}
-            <div className="mb-3">
-              <label className="form-label">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={form.email || ""}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="form-control"
-              />
-            </div>
-
-            {/* Address */}
-            <div className="mb-3">
-              <label className="form-label">Address</label>
-              <textarea
-                name="address"
-                value={form.address || ""}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                className="form-control"
-              />
-            </div>
-
-            {/* Photo */}
-            <div className="mb-3">
-              <label className="form-label">Photo</label>
-              <input
-                type="file"
-                className="form-control"
-                accept="image/*"
-                onChange={handlePhotoSelect}
-              />
-              {(photoFile || form.photopart) && (
-                <div className="mt-2 text-center">
-                  <img
-                    src={
-                      photoFile
-                        ? URL.createObjectURL(photoFile)
-                        : form.photopart
-                    }
-                    alt="Preview"
-                    style={{ maxWidth: "150px", borderRadius: "8px" }}
-                  />
-                </div>
-              )}
-            </div>
+          {/* Enrollee Name */}
+          <div className="mb-3">
+            <label className="form-label">Enrollee Name</label>
+            <input
+              type="text"
+              name="enrolleename"
+              value={form.enrolleename || ""}
+              onChange={handleNameChange}
+              className="form-control"
+            />
           </div>
-
-          {/* Footer */}
-          <div className="modal-footer">
-            <button className="btn btn-secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button className="btn btn-primary" onClick={handleSave}>
-              Save
-            </button>
-            {/* Only show Add Dependant if enrollee is principal */}{" "}
-            {form.policyid && form.policyid.includes("/0") && (
-              <button
-                className="btn btn-info"
-                onClick={() => setShowDependantModal(true)}
-              >
-                {" "}
-                Add Dependant{" "}
-              </button>
+          {/* Old Policy */}
+          <div className="mb-3">
+            <label className="form-label">Old Policy</label>
+            <input
+              type="text"
+              name="oldpolicy"
+              value={form.oldpolicy || ""}
+              onChange={(e) => setForm({ ...form, oldpolicy: e.target.value })}
+              className="form-control"
+            />
+          </div>
+          {/* Policy ID */}
+          <div className="mb-3">
+            <label className="form-label">Policy ID</label>
+            <input
+              type="text"
+              name="policyid"
+              value={form.policyid || ""}
+              readOnly
+              className="form-control"
+            />
+          </div>
+          {/* Date of Birth */}
+          <div className="mb-3">
+            <label className="form-label">Date of Birth</label>
+            <input
+              type="date"
+              className="form-control"
+              name="dateofbirth"
+              value={form.dateofbirth}
+              onChange={(e) =>
+                setForm({ ...form, dateofbirth: e.target.value })
+              }
+              required
+            />
+          </div>
+          {/* Family Status */}
+          <div className="mb-3">
+            <label className="form-label">Family Status</label>
+            <select
+              name="familystatus"
+              value={form.familystatus || ""}
+              onChange={(e) =>
+                setForm({ ...form, familystatus: e.target.value })
+              }
+              className="form-select"
+              disabled={formDisabled}
+            >
+              <option value="">Select Family Status</option>
+              {familyStatusOptions.map((fs) => (
+                <option key={fs} value={fs}>
+                  {fs}
+                </option>
+              ))}
+            </select>
+          </div>
+          {/* Plan */}
+          <div className="mb-3">
+            {" "}
+            <label className="form-label">Plan</label>{" "}
+            <select
+              name="plan"
+              value={form.plan || ""}
+              onChange={handlePlanChange}
+              className="form-select"
+            >
+              {" "}
+              <option value="">Select Plan</option>{" "}
+              {planOptions.map((p) => (
+                <option key={p} value={p}>
+                  {" "}
+                  {p}{" "}
+                </option>
+              ))}{" "}
+            </select>{" "}
+          </div>
+          {/* Provider */}
+          <div className="mb-3">
+            {" "}
+            <label className="form-label">Provider</label>{" "}
+            <select
+              name="provider"
+              value={form.provider || ""}
+              onChange={(e) => setForm({ ...form, provider: e.target.value })}
+              className="form-select"
+            >
+              {" "}
+              <option value="">Select Provider</option>{" "}
+              {hospitalOptions.map((h) => (
+                <option key={h} value={h}>
+                  {" "}
+                  {h}{" "}
+                </option>
+              ))}{" "}
+            </select>{" "}
+          </div>
+          {/* Gender */}
+          <div className="mb-3">
+            <label className="form-label">Gender</label>
+            <select
+              name="gender"
+              value={form.gender || ""}
+              onChange={(e) => setForm({ ...form, gender: e.target.value })}
+              className="form-select"
+            >
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+          {/* Marital Status */}
+          <div className="mb-3">
+            <label className="form-label">Marital Status</label>
+            <select
+              name="maritalstatus"
+              value={form.maritalstatus || ""}
+              onChange={(e) =>
+                setForm({ ...form, maritalstatus: e.target.value })
+              }
+              className="form-select"
+            >
+              <option value="">Select Marital Status</option>
+              <option value="Single">Single</option>
+              <option value="Married">Married</option>
+            </select>
+          </div>
+          {/* Phone Number */}
+          <div className="mb-3">
+            <label className="form-label">Phone Number</label>
+            <input
+              type="text"
+              name="phonenumber"
+              value={form.phonenumber || ""}
+              onChange={(e) =>
+                setForm({ ...form, phonenumber: e.target.value })
+              }
+              className="form-control"
+            />
+          </div>
+          {/* Email */}
+          <div className="mb-3">
+            <label className="form-label">Email</label>
+            <input
+              type="email"
+              name="email"
+              value={form.email || ""}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="form-control"
+            />
+          </div>
+          {/* Address */}
+          <div className="mb-3">
+            <label className="form-label">Address</label>
+            <textarea
+              name="address"
+              value={form.address || ""}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              className="form-control"
+            />
+          </div>
+          {/* Photo */}
+          <div className="mb-3">
+            <label className="form-label">Photo</label>
+            <input
+              type="file"
+              className="form-control"
+              accept="image/*"
+              onChange={handlePhotoSelect}
+            />
+            {(photoFile || form.photopart) && (
+              <div className="mt-2 text-center">
+                <img
+                  src={
+                    photoFile ? URL.createObjectURL(photoFile) : form.photopart
+                  }
+                  alt="Preview"
+                  style={{ maxWidth: "150px", borderRadius: "8px" }}
+                />
+              </div>
             )}
           </div>
         </div>
+
+        {/* Footer */}
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn btn-primary" onClick={handleSave}>
+            Save
+          </button>
+
+          {/* Only show Add Dependant if enrollee is principal */}
+          {form.policyid && form.policyid.includes("/0/") && (
+            <button className="btn btn-info" onClick={handleAddDependantClick}>
+              Add Dependant
+            </button>
+          )}
+        </div>
+
+        {/* Dependant Modal */}
+        {showDependantModal && (
+          <AddDependant
+            principal={form}
+            policyid={nextDependantPolicyId}
+            show={showDependantModal}
+            onClose={() => setShowDependantModal(false)}
+            onAdded={handleDependantAdded}
+          />
+        )}
       </div>
-      {/* Dependant Modal */}
-      {showDependantModal && (
-        <AddDependant
-          principal={form} // pass principal enrollee info
-          show={showDependantModal} // control visibility
-          onClose={() => setShowDependantModal(false)}
-          onAdded={handleDependantAdded} // callback after dependant is saved
-        />
-      )}
     </div>
-  );
+  </div>
+);
 }

@@ -1,16 +1,18 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
-export default function AddDependant({ principal, show, onClose, onAdded }) {
+
+
+export default function AddDependant({ principal, policyid, show, onClose, onAdded }) {
   const [form, setForm] = useState({
     enrolleename: "",
     gender: "",
-   photopart: "",
+    photopart: "",
     policyid: "",
     oldpolicy: "",
     provider: "",
     maritalstatus: "",
+    dateofbirth: "",
     // hidden inherited fields
     client: "",
     plan: "",
@@ -19,64 +21,103 @@ export default function AddDependant({ principal, show, onClose, onAdded }) {
     email: "",
     address: "",
   });
+  
+  const [ageValid, setAgeValid] = useState(true); // ✅ track age validity
 
   const [photoFile, setPhotoFile] = useState(null);
   const [error, setError] = useState("");
   const [hospitalOptions, setHospitalOptions] = useState([]);
 
+ // calculating age limit of dependant 
 
-  // ✅ Prefill from principal
- useEffect(() => {
-  if (principal) {
-    // Prefill hidden inherited fields
-    setForm({
-      enrolleename: "",               // no name inherited
-      gender: "",                     // user chooses
-      photopart: "",                  // no photo inherited
-      policyid: generateDependantPolicyId(principal.policyid),
-      oldpolicy: principal.oldpolicy,
-      provider: "",                   // let dependant choose
-      maritalstatus: principal.maritalstatus,
-      client: principal.client,
-      plan: principal.plan,
-      familystatus: principal.familystatus,
-      phonenumber: principal.phonenumber,
-      email: principal.email,
-      address: principal.address,
-    });
+ function calculateAge(dob) {
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
 
-    // ✅ Fetch allowed providers for this client
-    async function fetchProviders() {
-      const { data, error } = await supabase
-        .from("mygroup")
-        .select("bandallowed")
-        .eq("name", principal.client)
-        .single();
+async function validateDependantAge(dob) {
+  if (!dob || !principal?.client) return;
 
-      if (!error && data?.bandallowed) {
-        const bands = data.bandallowed.split(",").map(b => b.trim());
-        const { data: hospData, error: hospError } = await supabase
-          .from("myhospitals")
-          .select("name")
-          .in("band", bands);
+  const { data, error } = await supabase
+    .from("mygroup")
+    .select("dependantage")
+    .eq("name", principal.client)
+    .single();
 
-        if (!hospError && hospData) {
-          setHospitalOptions(hospData.map(h => h.name));
-        } else {
-          setHospitalOptions([]);
+  if (!error && data?.dependantage) {
+    const ageLimit = parseInt(data.dependantage, 10);
+    const age = calculateAge(dob);
+
+    console.log("DOB:", dob, "Calculated Age:", age, "Age Limit:", ageLimit);
+
+    if (age > ageLimit) {
+      setError(`Dependant age exceeded: ${age} years (limit is ${ageLimit}).`);
+      setAgeValid(false);
+    } else {
+      setError("");
+      setAgeValid(true);
+    }
+  }
+}
+
+ 
+ 
+ 
+ 
+  // ✅ Prefill from principal and policyid
+  useEffect(() => {
+    if (principal && policyid) {
+      setForm(prevForm => ({
+        ...prevForm,                     // preserve any edits
+        enrolleename: "",                // no name inherited
+        gender: "",                      // user chooses
+        photopart: "",                   // no photo inherited
+        policyid: policyid,              // ✅ use prop directly
+        oldpolicy: principal.oldpolicy || "",
+        dateofbirth: "",
+        provider: "",                    // let dependant choose
+        maritalstatus: principal.maritalstatus || "",
+        client: principal.client || "",
+        plan: principal.plan || "",
+        familystatus: principal.familystatus || "",
+        phonenumber: principal.phonenumber || "",
+        email: principal.email || "",
+        address: principal.address || "",
+      }));
+
+      
+// ✅ Fetch allowed providers for this client
+      async function fetchProviders() {
+        const { data, error } = await supabase
+          .from("mygroup")
+          .select("bandallowed")
+          .eq("name", principal.client)
+          .single();
+
+        if (!error && data?.bandallowed) {
+          const bands = data.bandallowed.split(",").map(b => b.trim());
+          const { data: hospData, error: hospError } = await supabase
+            .from("myhospitals")
+            .select("name")
+            .in("band", bands);
+
+          if (!hospError && hospData) {
+            setHospitalOptions(hospData.map(h => h.name));
+          } else {
+            setHospitalOptions([]);
+          }
         }
       }
-    }
 
-    fetchProviders();
-  }
-}, [principal]);
-  // ✅ Generate dependant policy ID
-  function generateDependantPolicyId(principalPolicyId) {
-    if (!principalPolicyId) return "";
-    // Replace /0 with /1 (or next number)
-    return principalPolicyId.replace("/0", "/1");
-  }
+      fetchProviders();
+    }
+  }, [principal, policyid]);
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -92,7 +133,10 @@ export default function AddDependant({ principal, show, onClose, onAdded }) {
     setPhotoFile(file);
     setError("");
   }
+
   async function handleSave() {
+    if (!ageValid) { return;}
+    
     setError("");
 
     let photoUrl = form.photopart;
@@ -121,6 +165,12 @@ export default function AddDependant({ principal, show, onClose, onAdded }) {
       }
     }
 
+    // ✅ Basic validation
+    if (!form.enrolleename || !form.gender || !form.dateofbirth || !form.provider) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+
     const { error: insertError } = await supabase
       .from("myenrolment")
       .insert([{ ...form, photopart: photoUrl }]);
@@ -141,11 +191,7 @@ export default function AddDependant({ principal, show, onClose, onAdded }) {
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">Add Dependant</h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={onClose}
-            ></button>
+            <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <div className="modal-body">
             {error && <div className="alert alert-danger">{error}</div>}
@@ -159,7 +205,7 @@ export default function AddDependant({ principal, show, onClose, onAdded }) {
                 value={form.enrolleename || ""}
                 onChange={handleChange}
                 className="form-control"
-                placeholder="Enter Depenadant name"
+                placeholder="Enter Dependant name"
               />
             </div>
 
@@ -199,24 +245,35 @@ export default function AddDependant({ principal, show, onClose, onAdded }) {
                 className="form-control"
               />
             </div>
+<input
+  type="date"
+  className="form-control"
+  name="dateofbirth"
+  value={form.dateofbirth || ""}
+  onChange={(e) => {
+    setForm({ ...form, dateofbirth: e.target.value });
+    validateDependantAge(e.target.value); // ✅ run age check
+  }}
+  required
+/>
 
-      <div className="mb-3">
-  <label className="form-label">Provider</label>
-  <select
-    name="provider"
-    value={form.provider || ""}
-    onChange={handleChange}
-    className="form-select"
-  >
-    <option value="">Select Provider</option>
-    {hospitalOptions.map(h => (
-      <option key={h} value={h}>
-        {h}
-      </option>
-    ))}
-  </select>
-</div>
 
+            <div className="mb-3">
+              <label className="form-label">Provider</label>
+              <select
+                name="provider"
+                value={form.provider || ""}
+                onChange={handleChange}
+                className="form-select"
+              >
+                <option value="">Select Provider</option>
+                {hospitalOptions.map(h => (
+                  <option key={h} value={h}>
+                    {h}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="mb-3">
               <label className="form-label">Marital Status</label>
@@ -242,12 +299,11 @@ export default function AddDependant({ principal, show, onClose, onAdded }) {
               />
               {photoFile && (
                 <div className="mt-2 text-center">
-                  {" "}
                   <img
                     src={URL.createObjectURL(photoFile)}
                     alt="Preview"
                     style={{ maxWidth: "150px", borderRadius: "8px" }}
-                  />{" "}
+                  />
                 </div>
               )}
             </div>
@@ -257,9 +313,14 @@ export default function AddDependant({ principal, show, onClose, onAdded }) {
             <button className="btn btn-secondary" onClick={onClose}>
               Cancel
             </button>
-            <button className="btn btn-primary" onClick={handleSave}>
-              Save Dependant
-            </button>
+           <button
+  className="btn btn-primary"
+  onClick={handleSave}
+  disabled={!ageValid} // ✅ freeze button if age invalid
+>
+  Save Dependant
+</button>
+
           </div>
         </div>
       </div>

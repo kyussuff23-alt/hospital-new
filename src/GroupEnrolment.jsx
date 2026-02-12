@@ -95,6 +95,7 @@ export default function GroupEnrolment() {
             <th>Family Status</th>
             <th>Band Allowed</th>
             <th>Activate</th>
+             <th>DependantAge</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -117,6 +118,7 @@ export default function GroupEnrolment() {
               <td>{g.familystatus}</td>
               <td>{g.bandallowed}</td>
               <td>{g.activate}</td>
+              <td>{g.dependantage}</td>
               <td>
                 <button
                   className="btn btn-sm btn-warning me-2"
