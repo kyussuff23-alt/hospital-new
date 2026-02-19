@@ -10,9 +10,19 @@ import { useAuth } from "./AuthContext";
 import Utilization from "./Utilization";
 import GroupEnrolment from "./GroupEnrolment";
 import Enrolment from "./Enrolment";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
 
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-// Cloudinary config from .env
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_UPLOAD_PRESET;
 const MAX_SIZE = 1024 * 1024; // 1 MB limit
@@ -21,12 +31,11 @@ export default function Dashboard() {
   const { setIsAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const [activePage, setActivePage] = useState(null);
+  const [activePage, setActivePage] = useState("provider");
   const [showMenu, setShowMenu] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState("https://via.placeholder.com/50");
   const [user, setUser] = useState(null);
 
-  // ✅ Fetch user once on mount
   useEffect(() => {
     const getUser = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
@@ -36,7 +45,6 @@ export default function Dashboard() {
     getUser();
   }, []);
 
-  // ✅ Fetch profile photo once user is available
   useEffect(() => {
     const fetchProfilePhoto = async () => {
       if (!user) return;
@@ -46,15 +54,9 @@ export default function Dashboard() {
         .eq("id", user.id)
         .single();
 
-      if (error) {
-        console.error("Error fetching profile photo:", error.message);
-      }
-
-      if (profile?.profile_photo_url) {
-        setProfilePhoto(profile.profile_photo_url);
-      }
+      if (error) console.error("Error fetching profile photo:", error.message);
+      if (profile?.profile_photo_url) setProfilePhoto(profile.profile_photo_url);
     };
-
     fetchProfilePhoto();
   }, [user]);
 
@@ -64,20 +66,15 @@ export default function Dashboard() {
     navigate("/");
   }
 
-  const handleProfileClick = () => {
-    setShowMenu(!showMenu);
-  };
+  const handleProfileClick = () => setShowMenu(!showMenu);
 
-  // ✅ Upload to Cloudinary with size restriction
   const handleProfileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
     if (file.size > MAX_SIZE) {
       alert("File must be smaller than 1 MB");
       return;
     }
-
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -85,70 +82,89 @@ export default function Dashboard() {
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
+        { method: "POST", body: formData }
       );
 
       const cloudinaryData = await res.json();
-      console.log("Cloudinary response:", cloudinaryData);
-
       const imageUrl = cloudinaryData.secure_url;
       if (!imageUrl) {
         alert("Upload failed: no URL returned from Cloudinary");
         return;
       }
-
-      // Update UI immediately
       setProfilePhoto(imageUrl);
-
-      // Save URL in Supabase
       if (user) {
-        const { data, error } = await supabase
+        await supabase
           .from("profiles_photo")
           .upsert({ id: user.id, profile_photo_url: imageUrl });
-
-        if (error) {
-          console.error("Supabase insert error:", error.message);
-        } else {
-          console.log("Supabase insert success:", data);
-        }
       }
     } catch (error) {
       console.error("Upload error:", error);
     }
   };
 
-  return (
-    <div className="container mt-4">
-      {/* Header with centered logo/title and profile circle */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="mx-auto text-center">
-          <img
-            src={logo}
-            alt="NONSUCH Logo"
-            style={{ height: "80px", width: "200px", marginRight: "10px" }}
-          />
-          Nonsuch Operation Portal
-        </h1>
+  const chartData = {
+    labels: ["Jan", "Feb", "Mar", "Apr"],
+    datasets: [
+      {
+        label: "Claims Processed",
+        data: [30, 45, 60, 40],
+        backgroundColor: "rgba(54, 162, 235, 0.6)",
+      },
+    ],
+  };
 
-        {/* Profile circle */}
-        <div className="position-relative">
+  return (
+    <div className="d-flex">
+      {/* Sidebar */}
+      <div
+        className="bg-dark text-white d-flex flex-column justify-content-between p-3"
+        style={{ width: "220px", minHeight: "100vh" }}
+      >
+        <div>
+          <div className="text-center mb-4">
+            <img
+              src={logo}
+              alt="NONSUCH Logo"
+              style={{ height: "40px", width: "100px" }}
+            />
+            <h6 className="mt-2">Nonsuch Portal</h6>
+          </div>
+          <ul className="nav flex-column">
+            {[
+              { key: "provider", icon: "bi-people-fill", label: "Provider" },
+              { key: "batch", icon: "bi-box-seam", label: "Batch" },
+              { key: "account", icon: "bi-person-circle", label: "Account" },
+              { key: "claims", icon: "bi-file-earmark-medical", label: "Claims" },
+              { key: "underwriting", icon: "bi-shield-check", label: "Underwriting" },
+              { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
+              { key: "enrolment", icon: "bi-pencil-square", label: "Enrolment" },
+              { key: "authorization", icon: "bi-check2-circle", label: "Authorization" },
+            ].map((item) => (
+              <li
+                key={item.key}
+                className="nav-item mb-2 p-2 rounded text-white"
+                style={{ cursor: "pointer", transition: "0.3s" }}
+                onClick={() => setActivePage(item.key)}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#0d6efd")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+              >
+                <i className={`${item.icon} me-2`}></i> {item.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Profile at bottom of sidebar */}
+        <div className="text-center mt-4">
           <img
             src={profilePhoto}
             alt="Profile"
-            className="rounded-circle"
-            style={{ width: "50px", height: "50px", cursor: "pointer" }}
+            className="rounded-circle border border-primary mb-2"
+            style={{ width: "60px", height: "60px", cursor: "pointer" }}
             onClick={handleProfileClick}
           />
-
-          {/* Dropdown menu */}
           {showMenu && (
-            <div
-              className="position-absolute end-0 mt-2 p-2 bg-white shadow rounded"
-              style={{ minWidth: "150px" }}
-            >
+            <div className="mt-2">
               <label
                 className="btn btn-sm btn-outline-primary w-100 mb-2"
                 htmlFor="profileInput"
@@ -173,81 +189,66 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Icon grid for navigation */}
-      <div className="row text-center g-4">
-        <div className="col-4 col-md-2" onClick={() => setActivePage("provider")}>
-          <i className="bi bi-people-fill display-4 text-primary"></i>
-          <p className="small">Provider</p>
+      {/* Main Content */}
+      <div className="flex-grow-1 p-4">
+        {/* Header */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2 className="text-capitalize">{activePage}</h2>
         </div>
-        <div className="col-4 col-md-2" onClick={() => setActivePage("batch")}>
-          <i className="bi bi-box-seam display-4 text-success"></i>
-          <p className="small">Batch</p>
-        </div>
-        <div className="col-4 col-md-2" onClick={() => setActivePage("account")}>
-          <i className="bi bi-person-circle display-4 text-warning"></i>
-          <p className="small">Account</p>
-        </div>
-        <div className="col-4 col-md-2" onClick={() => setActivePage("claims")}>
-          <i className="bi bi-file-earmark-medical display-4 text-danger"></i>
-          <p className="small">Claims</p>
-        </div>
-    
-      {/* Underwriting with dropdown */}
-<div className="col-4 col-md-2 dropdown">
-  <div
-    className="d-flex flex-column align-items-center"
-    data-bs-toggle="dropdown"
-    style={{ cursor: "pointer" }}
-  >
-    <i className="bi bi-shield-check display-4 text-info"></i>
-    <p className="small mb-0">Underwriting</p>
-  </div>
 
-  <ul
-    className="dropdown-menu shadow rounded border-0 p-2"
-    style={{ minWidth: "180px" }}
-  >
-    <li>
-      <button
-        className="dropdown-item rounded mb-1"
-        onClick={() => setActivePage("underwriting")}
-      >
-        <i className="bi bi-shield-check me-2 text-info"></i> Utilization Reporting
-      </button>
-    </li>
-    <li>
-      <button
-        className="dropdown-item rounded"
-        onClick={() => setActivePage("groupEnrolment")}
-      >
-        <i className="bi bi-people me-2 text-secondary"></i> Group Enrolment
-      </button>
-    </li>
-  </ul>
-</div>
-
-      
-        <div className="col-4 col-md-2" onClick={() => setActivePage("enrolment")}>
-          <i className="bi bi-pencil-square display-4 text-dark"></i>
-          <p className="small">Enrolment</p>
+        {/* Analytics Cards */}
+        <div className="row mb-4 g-3">
+          <div className="col-md-4">
+            <div className="card text-center shadow-sm h-100">
+              <div className="card-body">
+                <h6>Analytics soon </h6>
+                <p className="display-6 text-primary">0000</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="card text-center shadow-sm h-100">
+              <div className="card-body">
+                <h6>Analytics soon</h6>
+                <p className="display-6 text-danger">45</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="card shadow-sm h-100">
+              <div className="card-body">
+                <h6>Analytics soon</h6>
+                <Bar
+                  data={chartData}
+                  options={{
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="col-4 col-md-2" onClick={() => setActivePage("authorization")}>
-          <i className="bi bi-check2-circle display-4 text-success"></i>
-          <p className="small">Authorization</p>
-        </div>
+        {/* Dynamic content */}
+        {activePage === "provider" && <Provider />}
+        {activePage === "batch" && <Batch />}
+        {activePage === "account" && <Account />}
+        {activePage === "claims" && (
+          <div className="card p-4 shadow-sm">
+            <h5>Claims Section</h5>
+            <p>This is where claims management will be displayed.</p>
+          </div>
+        )}
+        {activePage === "underwriting" && <Utilization />}
+        {activePage === "groupEnrolment" && <GroupEnrolment />}
+        {activePage === "enrolment" && <Enrolment />}
+        {activePage === "authorization" && (
+          <div className="card p-4 shadow-sm">
+            <h5>Authorization Section</h5>
+            <p>This is where authorization workflows will be displayed.</p>
+          </div>
+        )}
       </div>
-
-      {/* Dynamic content */}
-  <div className="mt-4">
-  {activePage === "provider" && <Provider />}
-  {activePage === "batch" && <Batch />}
-  {activePage === "account" && <Account />}
-  {activePage === "underwriting" && <Utilization />}
-  {activePage === "groupEnrolment" && <GroupEnrolment />}
-   {activePage === "enrolment" && <Enrolment />}
-  {/* Add other components as needed */}
-</div>
-
     </div>
   );
 }
