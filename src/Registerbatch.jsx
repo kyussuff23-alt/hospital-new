@@ -282,6 +282,7 @@ function formatWithCommas(value) {
                     <option value="">Select Claims Type</option>{" "}
                     <option value="PHIS">PHIS</option>{" "}
                     <option value="NHIA">NHIA</option>{" "}
+                    <option value="NYSC">NYSC</option>{" "}
                     <option value="RETAIL">RETAIL</option>{" "}
                     <option value="SOCIAL">SOCIAL</option>{" "}
                     <option value="STATE">STATE</option>{" "}
