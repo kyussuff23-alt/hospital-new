@@ -121,11 +121,11 @@ export default function Dashboard() {
         style={{ width: "220px", minHeight: "100vh" }}
       >
         <div>
-          <div className="text-center mb-4">
+          <div className="text-start mb-4">
             <img
               src={logo}
               alt="NONSUCH Logo"
-              style={{ height: "40px", width: "100px" }}
+              style={{ height: "40px", width: "120px" }}
             />
             <h6 className="mt-2">Nonsuch Portal</h6>
           </div>
