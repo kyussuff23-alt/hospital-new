@@ -31,6 +31,7 @@ const [familyStatusOptions, setFamilyStatusOptions] = useState([]);
     photopart: "", // Cloudinary photo URL
     provider:"",
     dateofbirth : "",
+    nin: "", // ✅ new field for NIN
   });
 
  
@@ -421,6 +422,25 @@ async function handleSave() {
               <input type="text" disabled = {formDisabled} className="form-control" value={form.oldpolicy} onChange={e => setForm({ ...form, oldpolicy: e.target.value })} />
             </div>
 
+ 
+ {/* NIN */}
+<div className="mb-3">
+  <label className="form-label">NIN</label>
+  <input
+    type="text"
+    disabled={formDisabled}
+    className="form-control"
+    value={form.nin}
+    onChange={e => setForm({ ...form, nin: e.target.value })}
+    maxLength={11} // ✅ restrict to 11 digits
+    pattern="\d{11}" // ✅ enforce numeric input
+    title="Enter an 11-digit NIN"
+    required
+  />
+</div>
+
+ 
+ 
  <div className="mb-3">
   <label className="form-label">Date of Birth</label>
   <input

@@ -31,6 +31,7 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
       photopart: "",
       provider: "",
       dateofbirth: "",
+      nin: "", // ✅ new field
     }
   );
 
@@ -370,6 +371,8 @@ return (
               onChange={handleNameChange}
               className="form-control"
             />
+         
+         
           </div>
           {/* Old Policy */}
           <div className="mb-3">
@@ -381,6 +384,26 @@ return (
               onChange={(e) => setForm({ ...form, oldpolicy: e.target.value })}
               className="form-control"
             />
+         
+
+         {/* NIN */}
+<div className="mb-3">
+  <label className="form-label">NIN</label>
+  <input
+    type="text"
+    name="nin"
+    value={form.nin || ""}
+    onChange={(e) => setForm({ ...form, nin: e.target.value })}
+    className="form-control"
+    maxLength={11}      // ✅ restrict to 11 characters
+    pattern="\d{11}"    // ✅ enforce numeric input
+    title="Enter an 11-digit NIN"
+    required
+  />
+</div>
+
+         
+         
           </div>
           {/* Policy ID */}
           <div className="mb-3">

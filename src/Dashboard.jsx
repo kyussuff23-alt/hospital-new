@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import Provider from "./Provider";
 import Batch from "./Batch";
 import Account from "./Account";
+import Claims from "./Claims";
+import Claimstable from "./Claimstable";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import logo from "./assets/nonsuch.jpg";
 import { supabase } from "./supabaseClient";
@@ -10,6 +12,7 @@ import { useAuth } from "./AuthContext";
 import Utilization from "./Utilization";
 import GroupEnrolment from "./GroupEnrolment";
 import Enrolment from "./Enrolment";
+import Authorization from "./Authorization";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -116,78 +119,86 @@ export default function Dashboard() {
   return (
     <div className="d-flex">
       {/* Sidebar */}
-      <div
-        className="bg-dark text-white d-flex flex-column justify-content-between p-3"
-        style={{ width: "220px", minHeight: "100vh" }}
-      >
-        <div>
-          <div className="text-start mb-4">
-            <img
-              src={logo}
-              alt="NONSUCH Logo"
-              style={{ height: "40px", width: "120px" }}
-            />
-            <h6 className="mt-2">Nonsuch Portal</h6>
-          </div>
-          <ul className="nav flex-column">
-            {[
-              { key: "provider", icon: "bi-people-fill", label: "Provider" },
-              { key: "batch", icon: "bi-box-seam", label: "Batch" },
-              { key: "account", icon: "bi-person-circle", label: "Account" },
-              { key: "claims", icon: "bi-file-earmark-medical", label: "Claims" },
-              { key: "underwriting", icon: "bi-shield-check", label: "Underwriting" },
-              { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
-              { key: "enrolment", icon: "bi-pencil-square", label: "Enrolment" },
-              { key: "authorization", icon: "bi-check2-circle", label: "Authorization" },
-            ].map((item) => (
-              <li
-                key={item.key}
-                className="nav-item mb-2 p-2 rounded text-white"
-                style={{ cursor: "pointer", transition: "0.3s" }}
-                onClick={() => setActivePage(item.key)}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#0d6efd")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
-              >
-                <i className={`${item.icon} me-2`}></i> {item.label}
-              </li>
-            ))}
-          </ul>
-        </div>
+<div
+  className="bg-dark text-white d-flex flex-column justify-content-between p-3"
+  style={{
+    width: "220px",
+    minHeight: "100vh",
+    position: "sticky",   // keeps it in place
+    top: 0,               // sticks to the top of viewport
+    alignSelf: "flex-start" // ensures it aligns properly in flex layout
+  }}
+>
+  <div>
+    <div className="text-start mb-4">
+      <img
+        src={logo}
+        alt="NONSUCH Logo"
+        style={{ height: "40px", width: "120px" }}
+      />
+      <h6 className="mt-2">Nonsuch Portal</h6>
+    </div>
+    <ul className="nav flex-column">
+      {[
+        { key: "provider", icon: "bi-people-fill", label: "Provider" },
+        { key: "batch", icon: "bi-box-seam", label: "Batch" },
+        { key: "account", icon: "bi-person-circle", label: "Account" },
+        { key: "claims", icon: "bi-file-earmark-medical", label: "Claims" },
+          { key: "claimstable", icon: "bi-file-earmark-medical", label: "Claimstable" },
+        { key: "underwriting", icon: "bi-shield-check", label: "Underwriting" },
+        { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
+        { key: "enrolment", icon: "bi-pencil-square", label: "Enrolment" },
+        { key: "authorization", icon: "bi-check2-circle", label: "Authorization" },
+      ].map((item) => (
+        <li
+          key={item.key}
+          className="nav-item mb-2 p-2 rounded text-white"
+          style={{ cursor: "pointer", transition: "0.3s" }}
+          onClick={() => setActivePage(item.key)}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#0d6efd")}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+        >
+          <i className={`${item.icon} me-2`}></i> {item.label}
+        </li>
+      ))}
+    </ul>
+  </div>
 
-        {/* Profile at bottom of sidebar */}
-        <div className="text-center mt-4">
-          <img
-            src={profilePhoto}
-            alt="Profile"
-            className="rounded-circle border border-primary mb-2"
-            style={{ width: "60px", height: "60px", cursor: "pointer" }}
-            onClick={handleProfileClick}
-          />
-          {showMenu && (
-            <div className="mt-2">
-              <label
-                className="btn btn-sm btn-outline-primary w-100 mb-2"
-                htmlFor="profileInput"
-              >
-                Upload Photo
-              </label>
-              <input
-                type="file"
-                id="profileInput"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={handleProfileUpload}
-              />
-              <button
-                className="btn btn-sm btn-danger w-100"
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
+  {/* Profile at bottom of sidebar */}
+  <div className="text-center mt-4">
+    <img
+      src={profilePhoto}
+      alt="Profile"
+      className="rounded-circle border border-primary mb-2"
+      style={{ width: "60px", height: "60px", cursor: "pointer" }}
+      onClick={handleProfileClick}
+    />
+    {showMenu && (
+      <div className="mt-2">
+        <label
+          className="btn btn-sm btn-outline-primary w-100 mb-2"
+          htmlFor="profileInput"
+        >
+          Upload Photo
+        </label>
+        <input
+          type="file"
+          id="profileInput"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handleProfileUpload}
+        />
+        <button
+          className="btn btn-sm btn-danger w-100"
+          onClick={handleLogout}
+        >
+          Logout
+        </button>
       </div>
+    )}
+  </div>
+</div>
+
 
       {/* Main Content */}
       <div className="flex-grow-1 p-4">
@@ -233,21 +244,16 @@ export default function Dashboard() {
         {activePage === "provider" && <Provider />}
         {activePage === "batch" && <Batch />}
         {activePage === "account" && <Account />}
-        {activePage === "claims" && (
-          <div className="card p-4 shadow-sm">
-            <h5>Claims Section</h5>
-            <p>This is where claims management will be displayed.</p>
-          </div>
-        )}
+      {activePage === "claims" && <Claims />}
+  
+        
+        {activePage === "claimstable" &&         <div className="container-fluid">
+    <Claimstable />
+  </div>}
         {activePage === "underwriting" && <Utilization />}
         {activePage === "groupEnrolment" && <GroupEnrolment />}
         {activePage === "enrolment" && <Enrolment />}
-        {activePage === "authorization" && (
-          <div className="card p-4 shadow-sm">
-            <h5>Authorization Section</h5>
-            <p>This is where authorization workflows will be displayed.</p>
-          </div>
-        )}
+         {activePage === "authorization" && <Authorization />}
       </div>
     </div>
   );

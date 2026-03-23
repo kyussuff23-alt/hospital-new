@@ -4,6 +4,8 @@ import AuthPage from "./Authpage";
 import Dashboard from "./Dashboard";
 import Batch from "./Batch";
 import Account from "./Account";
+import Claims from "./Claims";
+import Claimstable from "./Claimstable";
 import Utilization from "./Utilization";
 import GroupEnrolment from "./GroupEnrolment";
 import { supabase } from "./supabaseClient";
@@ -12,6 +14,7 @@ import UpdateGroup from "./UpdateGroup";
 import RegisterGroup from "./RegisterGroup";
 import Enrolment from "./Enrolment";
 import RegisterEnrollee from "./RegisterEnrollee";
+import Authorization from "./Authorization";
 import UpdateEnrollee from "./UpdateEnrollee";
 import AddDependant from "./AddDependant";
 
@@ -107,6 +110,29 @@ export default function App() {
         }
       />
 
+     
+      {/* Protected Batch */}
+      <Route
+        path="/claims"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <Claims />
+          </ProtectedRoute>
+        }
+      />
+     
+        {/* Protected Batch */}
+      <Route
+        path="/claimstable"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <Claimstable />
+          </ProtectedRoute>
+        }
+      />
+     
+
+     
       {/* Protected Account */}
       <Route
         path="/account"
@@ -189,6 +215,15 @@ export default function App() {
         }
       />
       
+           {/* ✅ Protected Authorization */}
+      <Route
+        path="/authorization"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <Authorization />
+          </ProtectedRoute>
+        }
+      />
       
           {/* ✅ Protected Register Group */}
       <Route
