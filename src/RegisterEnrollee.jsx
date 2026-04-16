@@ -248,13 +248,34 @@ if (data?.bandallowed) {
     setForm({ ...form, enrolleename: value });
   }
 
-  // Generate policy ID when client + plan chosen
-  function generatePolicyId(client, plan) {
-    if (!client || !plan) return "";
-    const randomSix = Math.floor(100000 + Math.random() * 900000);
-    const planPrefix = plan.slice(0, 2).toUpperCase();
-    return `51/${client}/${randomSix}/0/${planPrefix}`;
+// Generate policy ID when client + plan chosen
+function generatePolicyId(client, plan) {
+  if (!client || !plan) return "";
+
+  const randomSix = Math.floor(100000 + Math.random() * 900000);
+
+  // Map plan names to custom codes
+  let planPrefix = "";
+  switch (plan.toLowerCase()) {
+    case "standard":
+      planPrefix = "ST";
+      break;
+    case "silver":
+      planPrefix = "SL";
+      break;
+    case "gold":
+      planPrefix = "GD";
+      break;
+    case "platinum":
+      planPrefix = "PL";
+      break;
+    default:
+      // fallback: use first two letters if plan not in mapping
+      planPrefix = plan.slice(0, 2).toUpperCase();
   }
+
+  return `51/${client}/${randomSix}/0/${planPrefix}`;
+}
 
 
 // When plan is chosen
