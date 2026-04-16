@@ -5,6 +5,7 @@ import Batch from "./Batch";
 import Account from "./Account";
 import Claims from "./Claims";
 import Claimstable from "./Claimstable";
+import Extractclaims from "./Extractclaims";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import logo from "./assets/nonsuch.jpg";
 import { supabase } from "./supabaseClient";
@@ -38,6 +39,14 @@ export default function Dashboard() {
   const [showMenu, setShowMenu] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState("https://via.placeholder.com/50");
   const [user, setUser] = useState(null);
+
+  // Extractclaims state lifted up
+const [hcpcode, setHcpcode] = useState("");
+const [ticket, setTicket] = useState("");
+const [dateStart, setDateStart] = useState("");
+const [dateEnd, setDateEnd] = useState("");
+const [claims, setClaims] = useState([]);
+
 
   useEffect(() => {
     const getUser = async () => {
@@ -144,7 +153,8 @@ export default function Dashboard() {
         { key: "batch", icon: "bi-box-seam", label: "Batch" },
         { key: "account", icon: "bi-person-circle", label: "Account" },
         { key: "claims", icon: "bi-file-earmark-medical", label: "Claims" },
-          { key: "claimstable", icon: "bi-file-earmark-medical", label: "Claimstable" },
+        { key: "claimstable", icon: "bi-file-earmark-medical", label: "Claimstable" },
+        { key: "extractclaims", icon: "bi-file-earmark-medical", label: "extractclaims" },
         { key: "underwriting", icon: "bi-shield-check", label: "Underwriting" },
         { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
         { key: "enrolment", icon: "bi-pencil-square", label: "Enrolment" },
@@ -245,11 +255,26 @@ export default function Dashboard() {
         {activePage === "batch" && <Batch />}
         {activePage === "account" && <Account />}
       {activePage === "claims" && <Claims />}
-  
-        
-        {activePage === "claimstable" &&         <div className="container-fluid">
+  {activePage === "claimstable" && <div className="container-fluid">
     <Claimstable />
   </div>}
+   
+{activePage === "extractclaims" && (
+  <Extractclaims
+    hcpcode={hcpcode}
+    setHcpcode={setHcpcode}
+    ticket={ticket}
+    setTicket={setTicket}
+    dateStart={dateStart}
+    setDateStart={setDateStart}
+    dateEnd={dateEnd}
+    setDateEnd={setDateEnd}
+    claims={claims}
+    setClaims={setClaims}
+  />
+)}
+
+       
         {activePage === "underwriting" && <Utilization />}
         {activePage === "groupEnrolment" && <GroupEnrolment />}
         {activePage === "enrolment" && <Enrolment />}

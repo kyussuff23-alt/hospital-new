@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
@@ -69,6 +71,15 @@ function formatWithCommas(value) {
     setError("");
     setSuccess("");
 
+    
+// ✅ Manual validation for HCP Code
+  if (!form.hcpcode || form.hcpcode.trim() === "") {
+    setError("❌ HCP Code is required.");
+    return;
+  }
+
+
+    
     const { data: existing, error: checkError } = await supabase
       .from("mybatch")
       .select("id")
@@ -167,6 +178,7 @@ function formatWithCommas(value) {
                     className="form-control"
                     value={form.hcpcode}
                     readOnly
+                    
                   />
                 </div>
 

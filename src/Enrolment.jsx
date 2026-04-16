@@ -99,10 +99,7 @@ async function handleReactivate() {
   fetchEnrollees();
 }
 
-
-
-  
-  async function fetchEnrollees() {
+ async function fetchEnrollees() {
     let query = supabase.from("myenrolment").select("*").order("id");
 
     if (clientFilter) {

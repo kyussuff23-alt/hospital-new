@@ -402,9 +402,7 @@ return (
   />
 </div>
 
-         
-         
-          </div>
+</div>
           {/* Policy ID */}
           <div className="mb-3">
             <label className="form-label">Policy ID</label>

@@ -44,6 +44,17 @@ export default function AddDependant({ principal, policyid, show, onClose, onAdd
 async function validateDependantAge(dob) {
   if (!dob || !principal?.client) return;
 
+  // ✅ Detect spouse by policyid segment using the prop
+  const segments = policyid.split("/");
+  const isSpouse = segments[3] === "1";
+
+  if (isSpouse) {
+    setError("");
+    setAgeValid(true);
+    return;
+  }
+ 
+ 
   const { data, error } = await supabase
     .from("mygroup")
     .select("dependantage")

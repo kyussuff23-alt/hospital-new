@@ -6,6 +6,7 @@ import Batch from "./Batch";
 import Account from "./Account";
 import Claims from "./Claims";
 import Claimstable from "./Claimstable";
+import Extractclaims from "./Extractclaims";
 import Utilization from "./Utilization";
 import GroupEnrolment from "./GroupEnrolment";
 import { supabase } from "./supabaseClient";
@@ -127,6 +128,17 @@ export default function App() {
         element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <Claimstable />
+          </ProtectedRoute>
+        }
+      />
+
+          
+        {/* Protected Batch */}
+      <Route
+        path="/extractclaims"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <Extractclaims />
           </ProtectedRoute>
         }
       />
