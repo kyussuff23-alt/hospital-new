@@ -118,30 +118,33 @@ async function handleReactivate() {
   }
 
   async function fetchDropdowns() {
-    const { data: clientData } = await supabase
-      .from("myenrolment")
-      .select("client")
-      .not("client", "is", null);
+  // ✅ Fetch clients from mygroup instead of myenrolment
+  const { data: clientData, error: clientError } = await supabase
+    .from("mygroup")
+    .select("name")
+    .not("name", "is", null);
 
-    if (clientData) {
-      const uniqueClients = [
-        ...new Set(clientData.map((c) => c.client?.trim())),
-      ].filter(Boolean);
-      setClients(uniqueClients);
-    }
-
-    const { data: providerData } = await supabase
-      .from("myenrolment")
-      .select("provider")
-      .not("provider", "is", null);
-
-    if (providerData) {
-      const uniqueProviders = [
-        ...new Set(providerData.map((p) => p.provider?.trim())),
-      ].filter(Boolean);
-      setProviders(uniqueProviders);
-    }
+  if (!clientError && clientData) {
+    const uniqueClients = [
+      ...new Set(clientData.map((c) => c.name?.trim())),
+    ].filter(Boolean);
+    setClients(uniqueClients);
   }
+
+  // ✅ Providers can still come from myenrolment (since hospitals/providers are tied to enrolments)
+  const { data: providerData, error: providerError } = await supabase
+    .from("myenrolment")
+    .select("provider")
+    .not("provider", "is", null);
+
+  if (!providerError && providerData) {
+    const uniqueProviders = [
+      ...new Set(providerData.map((p) => p.provider?.trim())),
+    ].filter(Boolean);
+    setProviders(uniqueProviders);
+  }
+}
+
 
   // ✅ Handle opening update modal
   function handleUpdateClick(enrollee) {
