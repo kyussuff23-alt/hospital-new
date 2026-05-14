@@ -428,7 +428,7 @@ async function handleSave() {
             {/* Enrollee Name */}
             <div className="mb-3">
               <label className="form-label">Enrollee Name</label>
-              <input type="text" disabled = {formDisabled} className="form-control" value={form.enrolleename} onChange={handleNameChange} />
+              <input type="text" required disabled = {formDisabled} className="form-control" value={form.enrolleename} onChange={handleNameChange} />
             </div>
 
             {/* Policy ID (auto-generated) */}

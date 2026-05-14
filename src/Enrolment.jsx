@@ -9,6 +9,13 @@ export default function Enrolment() {
   const [selectedEnrollee, setSelectedEnrollee] = useState(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+const [totalCount, setTotalCount] = useState(0);
+const [page, setPage] = useState(0);
+const pageSize = 20;
+                // records per page
+const totalPages = Math.ceil(totalCount / pageSize);
+const [jumpPage, setJumpPage] = useState(1); // input box value
+
 
   // Search state
   const [search, setSearch] = useState("");
@@ -22,10 +29,16 @@ export default function Enrolment() {
   const [clients, setClients] = useState([]);
   const [providers, setProviders] = useState([]);
 
-  // ✅ Fetch enrollee list on mount and whenever filters change
+  
+  
   useEffect(() => {
-    fetchEnrollees();
-  }, [clientFilter, providerFilter]);
+  setJumpPage(page + 1);
+}, [page]);
+
+  // ✅ Fetch enrollee list on mount and whenever filters change
+useEffect(() => {
+  fetchEnrollees();
+}, [clientFilter, providerFilter, search, searchMode, page]);
 
   useEffect(() => {
     fetchDropdowns();
@@ -100,22 +113,38 @@ async function handleReactivate() {
 }
 
  async function fetchEnrollees() {
-    let query = supabase.from("myenrolment").select("*").order("id");
+  try {
+    let query = supabase
+      .from("myenrolment")
+      .select("*", { count: "exact" })   // ✅ get total count
+      .order("id")
+      .range(page * pageSize, (page + 1) * pageSize - 1);
 
-    if (clientFilter) {
-      query = query.eq("client", clientFilter.trim());
-    }
-    if (providerFilter) {
-      query = query.eq("provider", providerFilter.trim());
+    // Filters
+    if (clientFilter) query = query.eq("client", clientFilter.trim());
+    if (providerFilter) query = query.eq("provider", providerFilter.trim());
+
+    // Search
+    if (search) {
+      if (searchMode === "policyid") {
+        query = query.ilike("policyid", `%${search}%`);
+      } else if (searchMode === "enrolleename") {
+        query = query.ilike("enrolleename", `%${search}%`);
+      }
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) {
-      console.error("Error fetching enrolments:", error);
+      console.error("Error fetching enrolments:", error.message);
     } else {
       setEnrollees(data);
+      setTotalCount(count || 0);   // ✅ store total count
     }
+  } catch (err) {
+    console.error("Unexpected error:", err.message);
   }
+}
+
 
   async function fetchDropdowns() {
   // ✅ Fetch clients from mygroup instead of myenrolment
@@ -348,6 +377,69 @@ async function handleReactivate() {
         </tbody>
       </table>
 
+      <div className="d-flex justify-content-between align-items-center mt-3">
+  <button
+    className="btn btn-secondary"
+    onClick={() => setPage(0)}
+    disabled={page === 0}
+  >
+    ⏮ First
+  </button>
+
+  <button
+    className="btn btn-secondary"
+    onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+    disabled={page === 0}
+  >
+    ◀ Previous
+  </button>
+
+  <span>
+    Page {page + 1} of {totalPages}
+  </span>
+
+  <button
+    className="btn btn-secondary"
+    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
+    disabled={page >= totalPages - 1}
+  >
+    Next ▶
+  </button>
+
+  <button
+    className="btn btn-secondary"
+    onClick={() => setPage(totalPages - 1)}
+    disabled={page >= totalPages - 1}
+  >
+    Last ⏭
+  </button>
+
+  {/* Jump to page input */}
+<input
+  type="number"
+  min="1"
+  max={totalPages}
+  value={jumpPage}
+  onChange={(e) => setJumpPage(e.target.value)}   // ✅ allow typing
+  onBlur={() => {
+    const targetPage = Number(jumpPage) - 1;
+    if (targetPage >= 0 && targetPage < totalPages) {
+      setPage(targetPage);
+    } else {
+      setJumpPage(page + 1);   // reset if invalid
+    }
+  }}
+  className="form-control ms-2"
+  style={{ width: "80px" }}
+/>
+
+</div>
+
+  
+         
+         
+         
+         
            {/* ✅ Register Modal */}
       {showRegisterModal && (
         <RegisterEnrollee
