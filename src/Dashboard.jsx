@@ -48,13 +48,14 @@ const [dateEnd, setDateEnd] = useState("");
 const [claims, setClaims] = useState([]);
 
 
-useEffect(() => {
-  const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-    setUser(session?.user ?? null);
-  });
-  return () => listener.subscription.unsubscribe();
-}, []);
-
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) console.error("Error fetching user:", error.message);
+      setUser(user);
+    };
+    getUser();
+  }, []);
 
   useEffect(() => {
     const fetchProfilePhoto = async () => {
