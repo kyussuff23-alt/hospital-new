@@ -19,7 +19,6 @@ import Authorization from "./Authorization";
 import UpdateEnrollee from "./UpdateEnrollee";
 import AddDependant from "./AddDependant";
 
-
 function ProtectedRoute({ isAuthenticated, children }) {
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -33,22 +32,25 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchRole = async (userId) => {
+      const { data: roleData, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .single();
+
+      if (!error && roleData) {
+        setUserRole(roleData.role);
+      }
+    };
+
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsAuthenticated(!!session);
 
       if (session?.user) {
-        const { data: roleData, error } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .single();
-
-        if (!error && roleData) {
-          setUserRole(roleData.role);
-        }
+        await fetchRole(session.user.id);
       }
-
       setLoading(false);
     };
 
@@ -56,16 +58,8 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(!!session);
-
       if (session?.user) {
-        supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .single()
-          .then(({ data }) => {
-            if (data) setUserRole(data.role);
-          });
+        fetchRole(session.user.id);
       }
     });
 
@@ -77,184 +71,28 @@ export default function App() {
   }
 
   return (
-   <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, userRole, setUserRole }}>
-  <Router>
-    <Routes>
-      {/* Public AuthPage */}
-      <Route
-        path="/"
-        element={
-          <AuthPage
-            setIsAuthenticated={setIsAuthenticated}
-            setUserRole={setUserRole}
-          />
-        }
-      />
-
-      {/* Protected Dashboard */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Protected Batch */}
-      <Route
-        path="/batch"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Batch />
-          </ProtectedRoute>
-        }
-      />
-
-     
-      {/* Protected Batch */}
-      <Route
-        path="/claims"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Claims />
-          </ProtectedRoute>
-        }
-      />
-     
-        {/* Protected Batch */}
-      <Route
-        path="/claimstable"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Claimstable />
-          </ProtectedRoute>
-        }
-      />
-
-          
-        {/* Protected Batch */}
-      <Route
-        path="/extractclaims"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Extractclaims />
-          </ProtectedRoute>
-        }
-      />
-     
-
-     
-      {/* Protected Account */}
-      <Route
-        path="/account"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Account />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* ✅ Protected Utilization */}
-      <Route
-        path="/utilization"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Utilization />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* ✅ Protected Group Enrolment */}
-      <Route
-        path="/group-enrolment"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <GroupEnrolment />
-          </ProtectedRoute>
-        }
-      />
-
-      
-      {/* ✅ Protected Update Group */}
-      <Route
-        path="/updategroup"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <UpdateGroup />
-          </ProtectedRoute>
-        }
-      />
-      
-      
-      {/* ✅ Protected Register Group */}
-      <Route
-        path="/registergroup"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <RegisterGroup />
-          </ProtectedRoute>
-        }
-      />
-      
-       {/* ✅ Protected Register Group */}
-      <Route
-        path="/enrolment"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Enrolment />
-          </ProtectedRoute>
-        }
-      />
-      
-          {/* ✅ Protected Register Group */}
-      <Route
-        path="/registerenrollee"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <RegisterEnrollee />
-          </ProtectedRoute>
-        }
-      />
-      
-          {/* ✅ Protected Register Group */}
-      <Route
-        path="/updateenrollee"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <UpdateEnrollee />
-          </ProtectedRoute>
-        }
-      />
-      
-           {/* ✅ Protected Authorization */}
-      <Route
-        path="/authorization"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Authorization />
-          </ProtectedRoute>
-        }
-      />
-      
-          {/* ✅ Protected Register Group */}
-      <Route
-        path="/adddependant"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <AddDependant />
-          </ProtectedRoute>
-        }
-      />
-     
-     
-      {/* Catch-all */}
-      <Route
-        path="*"
-        element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />}
-      />
-    </Routes>
-  </Router>
-</AuthContext.Provider>
+    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, userRole, setUserRole }}>
+      <Router>
+        <Routes>
+          <Route path="/" element={<AuthPage />} />
+          <Route path="/dashboard" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Dashboard /></ProtectedRoute>} />
+          <Route path="/batch" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Batch /></ProtectedRoute>} />
+          <Route path="/claims" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Claims /></ProtectedRoute>} />
+          <Route path="/claimstable" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Claimstable /></ProtectedRoute>} />
+          <Route path="/extractclaims" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Extractclaims /></ProtectedRoute>} />
+          <Route path="/account" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Account /></ProtectedRoute>} />
+          <Route path="/utilization" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Utilization /></ProtectedRoute>} />
+          <Route path="/group-enrolment" element={<ProtectedRoute isAuthenticated={isAuthenticated}><GroupEnrolment /></ProtectedRoute>} />
+          <Route path="/updategroup" element={<ProtectedRoute isAuthenticated={isAuthenticated}><UpdateGroup /></ProtectedRoute>} />
+          <Route path="/registergroup" element={<ProtectedRoute isAuthenticated={isAuthenticated}><RegisterGroup /></ProtectedRoute>} />
+          <Route path="/enrolment" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Enrolment /></ProtectedRoute>} />
+          <Route path="/registerenrollee" element={<ProtectedRoute isAuthenticated={isAuthenticated}><RegisterEnrollee /></ProtectedRoute>} />
+          <Route path="/updateenrollee" element={<ProtectedRoute isAuthenticated={isAuthenticated}><UpdateEnrollee /></ProtectedRoute>} />
+          <Route path="/authorization" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Authorization /></ProtectedRoute>} />
+          <Route path="/adddependant" element={<ProtectedRoute isAuthenticated={isAuthenticated}><AddDependant /></ProtectedRoute>} />
+          <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
+        </Routes>
+      </Router>
+    </AuthContext.Provider>
   );
 }

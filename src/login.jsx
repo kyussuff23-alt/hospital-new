@@ -1,65 +1,38 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import { useNavigate } from "react-router-dom";
 
-export default function Login({ onSwitchToRegister, setIsAuthenticated, setUserRole }) {
+export default function Login({ onSwitchToRegister, setIsAuthenticated }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const isLoggingIn = useRef(false);
 
-let isLoggingIn = false;
+  async function handleLogin(e) {
+    e.preventDefault();
+    if (isLoggingIn.current) return;
+    isLoggingIn.current = true;
 
-async function handleLogin(e) {
-  e.preventDefault();
-  if (isLoggingIn) return;
-  isLoggingIn = true;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError("Invalid email or password.");
+        return;
+      }
 
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+      setError("");
+      setIsAuthenticated?.(true);
 
-    if (error) {
-      setError("Invalid email or password.");
-      return;
+      // ✅ Role is now fetched in App.jsx, no need to query here
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      isLoggingIn.current = false;
     }
-
-    setError("");
-    if (setIsAuthenticated) setIsAuthenticated(true);
-
-    const user = data.user ?? data.session?.user;
-    if (!user) {
-      setError("Could not fetch user.");
-      return;
-    }
-
-    const { data: roleData, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (roleError) {
-      console.error("Error fetching role:", roleError.message);
-      setError("Role assignment failed.");
-      return;
-    }
-
-    if (roleData && setUserRole) {
-      setUserRole(roleData.role);
-    }
-
-    navigate("/dashboard");
-  } catch (err) {
-    console.error("Unexpected error:", err);
-    setError("Something went wrong. Please try again.");
-  } finally {
-    isLoggingIn = false;
   }
-}
-
 
   return (
     <div className="container d-flex justify-content-center align-items-center min-vh-100">
@@ -70,36 +43,20 @@ async function handleLogin(e) {
           <form onSubmit={handleLogin}>
             <div className="mb-3">
               <label className="form-label">Email address</label>
-              <input
-                type="email"
-                className="form-control"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <input type="email" className="form-control" placeholder="Enter your email"
+                value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="mb-3">
               <label className="form-label">Password</label>
-              <input
-                type="password"
-                className="form-control"
-                placeholder="Enter your password"
-                value={password}
-                  autoComplete="current-password"
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <input type="password" className="form-control" placeholder="Enter your password"
+                value={password} autoComplete="current-password"
+                onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            <button type="submit" className="btn btn-primary w-100">
-              Login
-            </button>
+            <button type="submit" className="btn btn-primary w-100">Login</button>
           </form>
           <p className="text-center mt-3">
             Don’t have an account?{" "}
-            <button className="btn btn-link" onClick={onSwitchToRegister}>
-              Register
-            </button>
+            <button className="btn btn-link" onClick={onSwitchToRegister}>Register</button>
           </p>
         </div>
       </div>

@@ -27,92 +27,41 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_NAME;
-const UPLOAD_PRESET = import.meta.env.VITE_UPLOAD_PRESET;
-const MAX_SIZE = 1024 * 1024; // 1 MB limit
-
 export default function Dashboard() {
   const { setIsAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [activePage, setActivePage] = useState("provider");
   const [showMenu, setShowMenu] = useState(false);
-  const [profilePhoto, setProfilePhoto] = useState("https://via.placeholder.com/50");
   const [user, setUser] = useState(null);
 
   // Extractclaims state lifted up
-const [hcpcode, setHcpcode] = useState("");
-const [ticket, setTicket] = useState("");
-const [dateStart, setDateStart] = useState("");
-const [dateEnd, setDateEnd] = useState("");
-const [claims, setClaims] = useState([]);
+  const [hcpcode, setHcpcode] = useState("");
+  const [ticket, setTicket] = useState("");
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
+  const [claims, setClaims] = useState([]);
 
-
+  // ✅ Only fetch session once
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) console.error("Error fetching user:", error.message);
-      setUser(user);
+    const getSessionUser = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) console.error("Error fetching session:", error.message);
+      setUser(session?.user ?? null);
     };
-    getUser();
+    getSessionUser();
   }, []);
-
-  useEffect(() => {
-    const fetchProfilePhoto = async () => {
-      if (!user) return;
-      const { data: profile, error } = await supabase
-        .from("profiles_photo")
-        .select("profile_photo_url")
-        .eq("id", user.id)
-        .single();
-
-      if (error) console.error("Error fetching profile photo:", error.message);
-      if (profile?.profile_photo_url) setProfilePhoto(profile.profile_photo_url);
-    };
-    fetchProfilePhoto();
-  }, [user]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    if (setIsAuthenticated) setIsAuthenticated(false);
+    setIsAuthenticated?.(false);
     navigate("/");
   }
 
   const handleProfileClick = () => setShowMenu(!showMenu);
 
-  const handleProfileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    if (file.size > MAX_SIZE) {
-      alert("File must be smaller than 1 MB");
-      return;
-    }
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", UPLOAD_PRESET);
-
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-        { method: "POST", body: formData }
-      );
-
-      const cloudinaryData = await res.json();
-      const imageUrl = cloudinaryData.secure_url;
-      if (!imageUrl) {
-        alert("Upload failed: no URL returned from Cloudinary");
-        return;
-      }
-      setProfilePhoto(imageUrl);
-      if (user) {
-        await supabase
-          .from("profiles_photo")
-          .upsert({ id: user.id, profile_photo_url: imageUrl });
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-    }
-  };
+  // ✅ Removed profile photo fetch and Cloudinary upload logic
+  // But keep the frontend fields so layout remains intact
 
   const chartData = {
     labels: ["Jan", "Feb", "Mar", "Apr"],
@@ -124,7 +73,6 @@ const [claims, setClaims] = useState([]);
       },
     ],
   };
-
   return (
     <div className="d-flex">
       {/* Sidebar */}
@@ -177,11 +125,11 @@ const [claims, setClaims] = useState([]);
   {/* Profile at bottom of sidebar */}
   <div className="text-center mt-4">
     <img
-      src={profilePhoto}
+      src="https://via.placeholder.com/50" 
       alt="Profile"
       className="rounded-circle border border-primary mb-2"
       style={{ width: "60px", height: "60px", cursor: "pointer" }}
-      onClick={handleProfileClick}
+      
     />
     {showMenu && (
       <div className="mt-2">
