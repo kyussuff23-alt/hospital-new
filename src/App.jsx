@@ -33,42 +33,48 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRole = async (userId) => {
-      const { data: roleData, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .single();
+  let roleFetched = false; // guard flag
 
-      if (!error && roleData) {
-        setUserRole(roleData.role);
-      }
-    };
+  const fetchRole = async (userId) => {
+    if (roleFetched || !userId) return; // prevent duplicate calls
+    roleFetched = true;
 
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-      setUser(session?.user ?? null);
+    const { data: roleData, error } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .single();
 
-      if (session?.user) {
-        await fetchRole(session.user.id);
-      }
-      setLoading(false);
-    };
+    if (!error && roleData) {
+      setUserRole(roleData.role);
+    }
+  };
 
-    checkSession();
+  const checkSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setIsAuthenticated(!!session);
+    setUser(session?.user ?? null);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRole(session.user.id);
-      }
-      setLoading(false);
-    });
+    if (session?.user) {
+      await fetchRole(session.user.id);
+    }
+    setLoading(false);
+  };
 
-    return () => subscription.unsubscribe();
-  }, []);
+  checkSession();
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    setIsAuthenticated(!!session);
+    setUser(session?.user ?? null);
+    if (session?.user) {
+      fetchRole(session.user.id);
+    }
+    setLoading(false);
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
+
 
   if (loading) {
     return <div>Loading...</div>;
