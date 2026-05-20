@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "./supabaseClient";
 import Updatehosp from "./Updatehosp";
 import Registerhosp from "./Registerhosp";
@@ -12,46 +12,64 @@ export default function Provider() {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchHospitals();
-  }, []);
-
-  const filteredHospitals = hospitals.filter((h) =>
-    (h.name || "").toLowerCase().includes(search.toLowerCase()) ||
-    (h.hcpcode || "").toLowerCase().includes(search.toLowerCase()) ||
-    (h.location || "").toLowerCase().includes(search.toLowerCase())
-  );
-
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentHospitals = filteredHospitals.slice(indexOfFirstRow, indexOfLastRow);
+  const currentHospitals = hospitals.slice(indexOfFirstRow, indexOfLastRow);
 
-  async function fetchHospitals() {
-    const { data, error } = await supabase
-      .from("myhospitals")
-      .select("*")
-      .order("id", { ascending: true });
-
-    if (error) {
-      console.error(error);
-      setError(error.message);
-    } else {
-      setHospitals(data);
-    }
+  // Fetch hospitals by search (limited)
+async function fetchHospitals(query) {
+  if (!query) {
+    setHospitals([]);
+    return;
   }
 
-  // ✅ Download hospitals to Excel
-  function handleDownload() {
-    const worksheet = XLSX.utils.json_to_sheet(hospitals);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Hospitals");
-    XLSX.writeFile(workbook, "hospitals.xlsx");
+  const { data, error } = await supabase
+    .from("myhospitals")
+    .select("id,hcpcode,name,acctno,acctname,phone,location,status,band")
+    .ilike("name", `%${query}%`)
+    .limit(50);
+
+  if (error) {
+    console.error(error);
+    setError(error.message);
+  } else {
+    setHospitals(data);
+  }
+}
+
+// Fetch ALL hospitals for download
+async function fetchAllHospitals() {
+  const { data, error } = await supabase
+    .from("myhospitals")
+    .select("*")
+    .order("id", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    setError(error.message);
+    return [];
+  }
+  return data;
+}
+
+// ✅ Download hospitals to Excel
+async function handleDownload() {
+  const allHospitals = await fetchAllHospitals();
+  if (!allHospitals.length) {
+    alert("No hospitals found to download.");
+    return;
   }
 
-  // ✅ Bulk upload hospitals from Excel
+  const worksheet = XLSX.utils.json_to_sheet(allHospitals);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Hospitals");
+  XLSX.writeFile(workbook, "hospitals.xlsx");
+}
+
+
   async function handleBulkUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -66,7 +84,6 @@ export default function Provider() {
       if (error) {
         setError("Bulk upload failed: " + error.message);
       } else {
-        fetchHospitals();
         alert("✅ Bulk upload successful!");
       }
     } catch (err) {
@@ -89,7 +106,8 @@ export default function Provider() {
       if (error) {
         setError(error.message);
       } else {
-        fetchHospitals();
+        // re-run search to refresh results
+        fetchHospitals(search);
       }
     }
   }
@@ -152,10 +170,14 @@ export default function Provider() {
           className="form-control"
           placeholder="Search hospitals..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            fetchHospitals(e.target.value); // 🔹 fetch only when typing
+          }}
         />
       </div>
-            {/* Table */}
+
+      {/* Table */}
       {error && <div className="alert alert-danger">{error}</div>}
       <div className="table-responsive" style={{ overflowX: "auto" }}>
         <table className="table table-striped table-hover table-bordered">
@@ -215,36 +237,36 @@ export default function Provider() {
         </table>
 
         {/* Pagination */}
-        <div className="d-flex justify-content-between align-items-center mt-3">
-          <button
-            className="btn btn-secondary"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </button>
+        {hospitals.length > 0 && (
+          <div className="d-flex justify-content-between align-items-center mt-3">
+            <button
+              className="btn btn-secondary"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </button>
 
-          <span>
-            Page {currentPage} of{" "}
-            {Math.ceil(filteredHospitals.length / rowsPerPage)}
-          </span>
+            <span>
+              Page {currentPage} of{" "}
+              {Math.ceil(hospitals.length / rowsPerPage)}
+            </span>
 
-          <button
-            className="btn btn-secondary"
-            onClick={() =>
-              setCurrentPage((prev) =>
-                prev < Math.ceil(filteredHospitals.length / rowsPerPage)
-                  ? prev + 1
-                  : prev
-              )
-            }
-            disabled={
-              currentPage === Math.ceil(filteredHospitals.length / rowsPerPage)
-            }
-          >
-            Next
-          </button>
-        </div>
+            <button
+              className="btn btn-secondary"
+              onClick={() =>
+                setCurrentPage((prev) =>
+                  prev < Math.ceil(hospitals.length / rowsPerPage)
+                    ? prev + 1
+                    : prev
+                )
+              }
+              disabled={currentPage === Math.ceil(hospitals.length / rowsPerPage)}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Update Modal */}
@@ -252,15 +274,15 @@ export default function Provider() {
         <Updatehosp
           hospital={selectedHospital}
           onClose={() => setShowUpdateModal(false)}
-          onUpdated={fetchHospitals}
+          onUpdated={() => fetchHospitals(search)}
         />
       )}
 
-      {/* Register Modal */}
+          {/* Register Modal */}
       {showRegisterModal && (
         <Registerhosp
           onClose={() => setShowRegisterModal(false)}
-          onRegistered={fetchHospitals}
+          onRegistered={() => fetchHospitals(search)}
         />
       )}
     </div>
