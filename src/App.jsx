@@ -29,51 +29,53 @@ function ProtectedRoute({ isAuthenticated, children }) {
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState("");
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
- useEffect(() => {
-  const fetchRole = async (userId) => {
-    const { data: roleData, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .single();
+  useEffect(() => {
+    const fetchRole = async (userId) => {
+      const { data: roleData, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .single();
 
-    if (!error && roleData) {
-      setUserRole(roleData.role);
-    }
-  };
+      if (!error && roleData) {
+        setUserRole(roleData.role);
+      }
+    };
 
-  const checkSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setIsAuthenticated(!!session);
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+      setUser(session?.user ?? null);
 
-    if (session?.user) {
-      await fetchRole(session.user.id);
-    }
-    setLoading(false); // ✅ clear loading after initial check
-  };
+      if (session?.user) {
+        await fetchRole(session.user.id);
+      }
+      setLoading(false);
+    };
 
-  checkSession();
+    checkSession();
 
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-    setIsAuthenticated(!!session);
-    if (session?.user) {
-      fetchRole(session.user.id);
-    }
-    setLoading(false); // ✅ clear loading here too
-  });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchRole(session.user.id);
+      }
+      setLoading(false);
+    });
 
-  return () => subscription.unsubscribe();
-}, []);
-
+    return () => subscription.unsubscribe();
+  }, []);
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, userRole, setUserRole }}>
+    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, userRole, setUserRole, user }}>
       <Router>
         <Routes>
           <Route path="/" element={<AuthPage />} />
