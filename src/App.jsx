@@ -31,40 +31,42 @@ export default function App() {
   const [userRole, setUserRole] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchRole = async (userId) => {
-      const { data: roleData, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .single();
+ useEffect(() => {
+  const fetchRole = async (userId) => {
+    const { data: roleData, error } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .single();
 
-      if (!error && roleData) {
-        setUserRole(roleData.role);
-      }
-    };
+    if (!error && roleData) {
+      setUserRole(roleData.role);
+    }
+  };
 
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
+  const checkSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setIsAuthenticated(!!session);
 
-      if (session?.user) {
-        await fetchRole(session.user.id);
-      }
-      setLoading(false);
-    };
+    if (session?.user) {
+      await fetchRole(session.user.id);
+    }
+    setLoading(false); // ✅ clear loading after initial check
+  };
 
-    checkSession();
+  checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-      if (session?.user) {
-        fetchRole(session.user.id);
-      }
-    });
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    setIsAuthenticated(!!session);
+    if (session?.user) {
+      fetchRole(session.user.id);
+    }
+    setLoading(false); // ✅ clear loading here too
+  });
 
-    return () => subscription.unsubscribe();
-  }, []);
+  return () => subscription.unsubscribe();
+}, []);
+
 
   if (loading) {
     return <div>Loading...</div>;
