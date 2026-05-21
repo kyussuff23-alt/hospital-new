@@ -20,6 +20,8 @@ import UpdateEnrollee from "./UpdateEnrollee";
 import AddDependant from "./AddDependant";
 
 function ProtectedRoute({ isAuthenticated, children }) {
+ 
+ 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }

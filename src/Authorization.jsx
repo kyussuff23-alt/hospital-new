@@ -84,7 +84,9 @@ const handleSaveAuthorization = async () => {
 const passwordMap = {
   "267789": "tolu",
   "468767": "damilola",
-  "345625": "funmi"
+  "345625": "peace",
+  "345622": "olayemi",
+  "345623": "toyin"
 };
 
 
