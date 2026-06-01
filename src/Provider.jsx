@@ -28,8 +28,8 @@ async function fetchHospitals(query) {
 
   const { data, error } = await supabase
     .from("myhospitals")
-    .select("id,hcpcode,name,acctno,acctname,phone,location,status,band")
-    .ilike("name", `%${query}%`)
+    .select("id,hcpcode,name,acctno,acctname,phone,location,status,band,address,registerbank,contactperson,insurancetype")
+    .or(`name.ilike.%${query}%,hcpcode.ilike.%${query}%,location.ilike.%${query}%`)
     .limit(50);
 
   if (error) {
@@ -39,6 +39,7 @@ async function fetchHospitals(query) {
     setHospitals(data);
   }
 }
+
 
 // Fetch ALL hospitals for download
 async function fetchAllHospitals() {
