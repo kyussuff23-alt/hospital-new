@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import { useNavigate } from "react-router-dom";
 
-export default function Login({ onSwitchToRegister }) {
+export default function Login({ onSwitchToRegister, setIsAuthenticated }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -22,9 +22,9 @@ export default function Login({ onSwitchToRegister }) {
       }
 
       setError("");
-      // ❌ Removed setIsAuthenticated(true)
-      // ✅ Let App.jsx handle auth state via onAuthStateChange
+      setIsAuthenticated?.(true);
 
+      // ✅ Role is now fetched in App.jsx, no need to query here
       navigate("/dashboard");
     } catch (err) {
       console.error("Unexpected error:", err);
@@ -43,26 +43,14 @@ export default function Login({ onSwitchToRegister }) {
           <form onSubmit={handleLogin}>
             <div className="mb-3">
               <label className="form-label">Email address</label>
-              <input
-                type="email"
-                className="form-control"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <input type="email" className="form-control" placeholder="Enter your email"
+                value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="mb-3">
               <label className="form-label">Password</label>
-              <input
-                type="password"
-                className="form-control"
-                placeholder="Enter your password"
-                value={password}
-                autoComplete="current-password"
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <input type="password" className="form-control" placeholder="Enter your password"
+                value={password} autoComplete="current-password"
+                onChange={(e) => setPassword(e.target.value)} required />
             </div>
             <button type="submit" className="btn btn-primary w-100">Login</button>
           </form>
