@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import AuthPage from "./Authpage";
 import Dashboard from "./Dashboard";
 import Batch from "./Batch";
@@ -20,7 +20,10 @@ import UpdateEnrollee from "./UpdateEnrollee";
 import AddDependant from "./AddDependant";
 import UpdateRequest from "./UpdateRequest";
 
+
 function ProtectedRoute({ isAuthenticated, children }) {
+ 
+ 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
@@ -28,18 +31,71 @@ function ProtectedRoute({ isAuthenticated, children }) {
 }
 
 export default function App() {
+  
+ 
+  
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState("");
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [pendingCount, setPendingCount] = useState(0);
 
-  // ✅ persistent guard for role fetch
-  const roleFetchedRef = useRef(false);
+ 
+ 
+  // Inside App.jsx
+const [pendingCount, setPendingCount] = useState(0);
+
+useEffect(() => {
+  // 1. CRITICAL: Stop the effect if the user is not authenticated yet
+  if (!isAuthenticated || !user) return; 
+
+  // Initial fetch (only fires if user is authenticated)
+  const fetchPendingCount = async () => {
+    const { count, error } = await supabase
+      .from("authrequest")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending");
+    if (!error) setPendingCount(count || 0);
+  };
+  fetchPendingCount();
+
+  // Realtime subscription (only initiates once auth token is attached)
+  const channel = supabase
+    .channel("authrequest_changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "authrequest" }, (payload) => {
+      console.log("Realtime change:", payload);
+      if (payload.eventType === "INSERT" && payload.new.status === "pending") {
+        setPendingCount((prev) => prev + 1);
+      }
+      if (payload.eventType === "UPDATE") {
+        if (payload.old.status === "pending" && payload.new.status !== "pending") {
+          setPendingCount((prev) => prev - 1);
+        }
+        if (payload.old.status !== "pending" && payload.new.status === "pending") {
+          setPendingCount((prev) => prev + 1);
+        }
+      }
+      if (payload.eventType === "DELETE" && payload.old.status === "pending") {
+        setPendingCount((prev) => prev - 1);
+      }
+    })
+    .subscribe((status) => console.log("Channel status:", status));
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+// 2. CRITICAL: Add isAuthenticated and user to the dependency array
+}, [isAuthenticated, user]); 
+
+ 
+ 
+ 
+ 
+  useEffect(() => {
+  let roleFetched = false; // guard flag
 
   const fetchRole = async (userId) => {
-    if (roleFetchedRef.current || !userId) return; // prevent duplicate calls
-    roleFetchedRef.current = true;
+    if (roleFetched || !userId) return; // prevent duplicate calls
+    roleFetched = true;
 
     const { data: roleData, error } = await supabase
       .from("user_roles")
@@ -52,75 +108,38 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    if (!isAuthenticated || !user) return;
+  const checkSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setIsAuthenticated(!!session);
+    setUser(session?.user ?? null);
 
-    const fetchPendingCount = async () => {
-      const { count, error } = await supabase
-        .from("authrequest")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
-      if (!error) setPendingCount(count || 0);
-    };
-    fetchPendingCount();
+    if (session?.user) {
+      await fetchRole(session.user.id);
+    }
+    setLoading(false);
+  };
 
-    const channel = supabase
-      .channel("authrequest_changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "authrequest" }, (payload) => {
-        if (payload.eventType === "INSERT" && payload.new.status === "pending") {
-          setPendingCount((prev) => prev + 1);
-        }
-        if (payload.eventType === "UPDATE") {
-          if (payload.old.status === "pending" && payload.new.status !== "pending") {
-            setPendingCount((prev) => prev - 1);
-          }
-          if (payload.old.status !== "pending" && payload.new.status === "pending") {
-            setPendingCount((prev) => prev + 1);
-          }
-        }
-        if (payload.eventType === "DELETE" && payload.old.status === "pending") {
-          setPendingCount((prev) => prev - 1);
-        }
-      })
-      .subscribe();
+  checkSession();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isAuthenticated, user]);
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    setIsAuthenticated(!!session);
+    setUser(session?.user ?? null);
+    if (session?.user) {
+      fetchRole(session.user.id);
+    }
+    setLoading(false);
+  });
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-      setUser(session?.user ?? null);
+  return () => subscription.unsubscribe();
+}, []);
 
-      if (session?.user) {
-        await fetchRole(session.user.id);
-      }
-      setLoading(false);
-    };
-
-    checkSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRole(session.user.id);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, userRole, setUserRole, user, pendingCount }}>
+    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, userRole, setUserRole, user,pendingCount }}>
       <Router>
         <Routes>
           <Route path="/" element={<AuthPage />} />
@@ -139,10 +158,13 @@ export default function App() {
           <Route path="/updateenrollee" element={<ProtectedRoute isAuthenticated={isAuthenticated}><UpdateEnrollee /></ProtectedRoute>} />
           <Route path="/authorization" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Authorization /></ProtectedRoute>} />
           <Route path="/adddependant" element={<ProtectedRoute isAuthenticated={isAuthenticated}><AddDependant /></ProtectedRoute>} />
-          <Route path="/updaterequest" element={<ProtectedRoute isAuthenticated={isAuthenticated}><UpdateRequest /></ProtectedRoute>} />
+         <Route path="/updaterequest" element={<ProtectedRoute isAuthenticated={isAuthenticated}><UpdateRequest /></ProtectedRoute>} />
+
           <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
         </Routes>
       </Router>
     </AuthContext.Provider>
   );
 }
+
+
