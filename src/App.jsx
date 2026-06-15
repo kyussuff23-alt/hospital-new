@@ -34,12 +34,26 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
 
-  // 🛡️ CRITICAL REF GAURD: Persistent safety lock against multi-fire Auth sessions
-  const fetchedUserIds = useRef(new Set());
+  // ✅ persistent guard for role fetch
+  const roleFetchedRef = useRef(false);
 
-  // 1. Pending Count & Realtime Data Synchronization Effect
+  const fetchRole = async (userId) => {
+    if (roleFetchedRef.current || !userId) return; // prevent duplicate calls
+    roleFetchedRef.current = true;
+
+    const { data: roleData, error } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .single();
+
+    if (!error && roleData) {
+      setUserRole(roleData.role);
+    }
+  };
+
   useEffect(() => {
-    if (!isAuthenticated || !user) return; 
+    if (!isAuthenticated || !user) return;
 
     const fetchPendingCount = async () => {
       const { count, error } = await supabase
@@ -73,61 +87,27 @@ export default function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isAuthenticated, user]); 
+  }, [isAuthenticated, user]);
 
-  // 2. Core Authentication & Robust Role Resolving Effect
   useEffect(() => {
-    const fetchRole = async (userId) => {
-      // If this specific user ID is already being resolved, skip it
-      if (!userId || fetchedUserIds.current.has(userId)) return;
-      fetchedUserIds.current.add(userId);
-
-      try {
-        const { data: roleData, error } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId)
-          .single();
-
-        if (!error && roleData) {
-          setUserRole(roleData.role);
-        }
-      } catch (err) {
-        console.error("Role fetching breakdown:", err);
-        fetchedUserIds.current.delete(userId); // release lock on systematic error state
-      }
-    };
-
     const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const isAuth = !!session;
-        setIsAuthenticated(isAuth);
-        setUser(session?.user ?? null);
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+      setUser(session?.user ?? null);
 
-        if (session?.user) {
-          await fetchRole(session.user.id);
-        }
-      } catch (err) {
-        console.error("Session check failure:", err);
-      } finally {
-        setLoading(false);
+      if (session?.user) {
+        await fetchRole(session.user.id);
       }
+      setLoading(false);
     };
 
     checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      const isAuth = !!session;
-      setIsAuthenticated(isAuth);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
       setUser(session?.user ?? null);
-
       if (session?.user) {
         fetchRole(session.user.id);
-      } else {
-        // Clear local guard registry caching on global sign-out
-        fetchedUserIds.current.clear();
-        setUserRole("");
       }
       setLoading(false);
     });
@@ -136,13 +116,7 @@ export default function App() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center min-vh-screen bg-light">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading Secure Portal...</span>
-        </div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
   return (
