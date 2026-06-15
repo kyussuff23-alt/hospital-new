@@ -1,7 +1,23 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
-export default function Authorization() {
+export default function Authorization( {
+  id: initialId, // rename the prop to avoid conflict
+  hcpCode,
+  hospitalName,
+  enrolleeName,
+  policyId,
+  clientName,
+  diagFromRequest,
+  treatFromRequest,
+  onDone
+}) {
+ 
+ 
+ const [reason, setReason] = useState("");
+ // const [authycode, setAuthycode] = useState("");
+  const [status, setStatus] = useState("approved"); // default
+  
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState("");
   const [enrolments, setEnrolments] = useState([]);
@@ -28,6 +44,11 @@ const [password, setPassword] = useState("");
 const [showUnauthorizedModal, setShowUnauthorizedModal] = useState(false);
 const [saving, setSaving] = useState(false);
 const [showSuccessModal, setShowSuccessModal] = useState(false);
+const [showSuccessModall, setShowSuccessModall] = useState(false);
+  const [enrolleeId, setEnrolleeId] = useState(initialId);
+  const [showRequestCard, setShowRequestCard] = useState(false);
+
+
 
 
 function resetAuthorizationForm() {
@@ -39,7 +60,7 @@ function resetAuthorizationForm() {
 }
 
 
-const handleSaveAuthorization = async () => {
+const handleSaveAuthorization = async (code) => {
   setSaving(true);
 
   const allItems = [
@@ -49,7 +70,7 @@ const handleSaveAuthorization = async () => {
 
   const rows = allItems.map(item => ({
     date: new Date().toISOString(),
-    authcode: authCode,
+    authcode: code,   // ✅ use the code passed in
     provider: selectedResult?.provider,
     enrolleename: selectedResult?.enrolleename,
     policyid: selectedResult?.policyid,
@@ -60,22 +81,46 @@ const handleSaveAuthorization = async () => {
     services: item
   }));
 
-  const { error } = await supabase
-    .from("authtable")
-    .insert(rows);
+  const { error } = await supabase.from("authtable").insert(rows);
 
   if (error) {
     console.error("Error saving authorization:", error.message);
   } else {
-    // ✅ Show success modal
     setShowSuccessModal(true);
-
-    // ✅ Clear services, drugs, and card
-   // ✅ Clear all fields
+    setAuthCode(generatedCode);
     resetAuthorizationForm();
   }
 
   setSaving(false);
+};
+
+// this is for form coming from updatrrequest 
+const handleSendAuthorization = async () => {
+ // console.log("Sending authorization:", { initialId, status, reason, authycode });
+
+
+ 
+
+  const { error } = await supabase
+    .from("authrequest")
+    .update({
+      status,             // enum column: "approved" or "denied"
+      reason,
+      authcode: authCode,
+      updated_at: new Date(), // optional: keep updated_at fresh
+    })
+    .eq("id", initialId);        // use primary key
+
+  if (error) {
+   // console.error("Error updating authrequest:", error.message);
+  } else {
+    setShowSuccessModall(true);
+    setReason("");
+    setAuthCode("");
+    setStatus("approved"); // reset dropdown back to default
+    onDone();
+   
+  }
 };
 
 
@@ -97,15 +142,21 @@ const handleGenerateAuthClick = () => {
 const handleSubmitPassword = () => {
   if (passwordMap[password]) {
     const randomSix = Math.floor(100000 + Math.random() * 900000);
-    setAuthCode(`51/PHIS/${randomSix}/${passwordMap[password]}`);
+    const generatedCode = `51/PHIS/${randomSix}/${passwordMap[password]}`;
+    setAuthCode(generatedCode);
     setShowPasswordInput(false);
     setPassword("");
+
+    // ✅ Save immediately with the fresh code
+    handleSaveAuthorization(generatedCode);
   } else {
-    setShowUnauthorizedModal(true); // show modal if password invalid
+    setShowUnauthorizedModal(true);
     setShowPasswordInput(false);
     setPassword("");
   }
 };
+
+
 
 
 <div className="mt-4 text-center">
@@ -132,7 +183,7 @@ const handleSubmitPassword = () => {
 
 
 
- const handleApprove = () => {
+const handleApprove = () => {
   setSelectedServices(prev => [...prev, { name: selectedService, action: "approve" }]);
 };
 
@@ -197,6 +248,7 @@ const handleDenyDrug = () => {
   }, [diagnosis]);
 
   // Fetch clients
+  
   useEffect(() => {
     const fetchClients = async () => {
       const { data, error } = await supabase.from("mygroup").select("name");
@@ -221,19 +273,21 @@ const handleDenyDrug = () => {
   }, [selectedClient]);
 
   // Live search
-  useEffect(() => {
-    if (!searchTerm) {
-      setFilteredResults([]);
-      setSelectedResult(null);
-      return;
-    }
-    const results = enrolments.filter(
-      (e) =>
-        e.policyid.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        e.enrolleename.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredResults(results);
-  }, [searchTerm, enrolments]);
+ 
+useEffect(() => {
+  if (!searchTerm) {
+    setFilteredResults([]);
+    setSelectedResult(null);
+    return;
+  }
+  const normalizedTerm = searchTerm.trim().toLowerCase();
+  const results = enrolments.filter((e) =>
+    e.policyid?.toLowerCase().includes(normalizedTerm) ||
+    e.enrolleename?.trim().toLowerCase().includes(normalizedTerm)
+  );
+  setFilteredResults(results);
+}, [searchTerm, enrolments]);
+
 
   
   
@@ -318,7 +372,7 @@ useEffect(() => {
     <div className="card p-4 shadow-sm">
       <h5 className="mb-4">Authorization</h5>
 
-      {/* Row 1: Client + Search */}
+ {/* Row 1: Client + Search */}
       <div className="row mb-4">
         <div className="col-md-6">
           <label className="form-label">Select Client</label>
@@ -390,6 +444,7 @@ useEffect(() => {
           <div className="col-md-8">
             <div className="card shadow-lg border-0">
               <div className="card-header bg-gradient bg-primary text-white">
+                
                 <h6 className="mb-0">
                   <i className="bi bi-person-badge me-2"></i> Enrollee Details
                 </h6>
@@ -544,8 +599,21 @@ useEffect(() => {
               onClick={() => setShowSuccessModal(false)}
             ></button>
           </div>
-          <div className="modal-body">
-            <p>Auth codes have been saved successfully.</p>
+          <div className="modal-body text-center">
+            <p>Success.</p>
+
+            {/* ✅ Show Auth Code here */}
+            {authCode && (
+              <div className="alert alert-info mt-3">
+                <strong>Auth Code:</strong> {authCode}
+                <button
+                  className="btn btn-sm btn-outline-secondary ms-3"
+                  onClick={() => navigator.clipboard.writeText(authCode)}
+                >
+                  Copy
+                </button>
+              </div>
+            )}
           </div>
           <div className="modal-footer">
             <button
@@ -563,25 +631,25 @@ useEffect(() => {
 )}
 
 
+   
+{selectedResult && (
+  <div className="mb-3">
+    <label className="form-label">Service</label>
+    <input
+      list="servicesList"
+      className="form-control"
+      placeholder="Search treatment, investigation and services"
+      value={selectedService}
+      onChange={(e) => setSelectedService(e.target.value)}
+    />
+    <datalist id="servicesList">
+      {servicesOptions.map((service, idx) => (
+        <option key={idx} value={service} />
+      ))}
+    </datalist>
+  </div>
+)}
 
-
-
-
-    <div className="mb-3">
-  <label className="form-label">Service</label>
-  <input
-    list="servicesList"
-    className="form-control"
-    placeholder="Search treatment, investigation and services"
-    value={selectedService}
-    onChange={(e) => setSelectedService(e.target.value)}
-  />
-  <datalist id="servicesList">
-    {servicesOptions.map((service, idx) => (
-      <option key={idx} value={service} />
-    ))}
-  </datalist>
-</div>
 
 
 {coverageStatus && (
@@ -601,12 +669,14 @@ useEffect(() => {
   </div>
 )}
 
+
 <div className="mt-3">
   <input
     type="text"
     className="form-control mt-3"
     placeholder="Search drugs"
     value={selectedDrug}
+    readOnly = {!selectedResult}
     onChange={(e) => setSelectedDrug(e.target.value)}
     list="drugsOptions"
   />
@@ -737,40 +807,196 @@ useEffect(() => {
   </div>
 )}
 
-
-       
-       
-        {/* Bootstrap Alert Box for Auth Code */}
-      {authCode && (
-  <div className="alert alert-info alert-dismissible fade show mt-3" role="alert">
-    <strong>Auth Code:</strong> {authCode}
-    <button
-      type="button"
-      className="btn-close"
-      onClick={() => setAuthCode("")}
-    ></button>
+ </div>
+    </div>
   </div>
 )}
 
- <div className="mt-4 text-center">
-  <button
-    className="btn btn-success"
-    onClick={handleSaveAuthorization}
-    disabled={saving || !authCode}
-  >
-    {saving ? "Saving..." : "Save Authorization"}
-  </button>
-</div>
 
+
+
+ {/* ✅ Only show the request form if id exists */}
+  {/* ✅ Only show the request form if id exists */}
+{enrolleeId  && !showSuccessModal && (
+ <div className="d-flex justify-content-center mt-5">
+  <div className="col-md-8 col-lg-6">
+    <div className="card shadow-lg border-0 rounded-4">
+      {/* Header */}
+      <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center rounded-top-4">
+        <h5 className="mb-0">Authorization Request</h5>
+        <button
+          type="button"
+          className="btn-close btn-close-white"
+          onClick={() => setEnrolleeId(null)} // ✅ close card
+        ></button>
+      </div>
+
+      {/* Body */}
      
+      
+      <div className="card-body p-4">
+     
+        <div className="row mb-4">
+          <div className="col-md-6">
+            <label className="form-label">HCP Code</label>
+            <input
+              type="text"
+              className="form-control"
+              style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+              value={hcpCode || ""}
+              readOnly
+            />
+          </div>
+          <div className="col-md-6">
+            <label className="form-label">Hospital</label>
+            <input
+              type="text"
+              className="form-control"
+              style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+              value={hospitalName || ""}
+              readOnly
+            />
+          </div>
+        </div>
+
+        <div className="row mb-4">
+          <div className="col-md-6">
+            <label className="form-label">Enrollee Name</label>
+            <input
+              type="text"
+              className="form-control"
+              style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+              value={enrolleeName || ""}
+              readOnly
+            />
+          </div>
+          <div className="col-md-6">
+            <label className="form-label">Policy ID</label>
+            <input
+              type="text"
+              className="form-control"
+              style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+              value={policyId || ""}
+              readOnly
+            />
+          </div>
+        </div>
+
+        <div className="row mb-4">
+          <div className="col-md-6">
+            <label className="form-label">Client</label>
+            <input
+              type="text"
+              className="form-control"
+              style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+              value={clientName || ""}
+              readOnly
+            />
+          </div>
+          <div className="col-md-6">
+            <label className="form-label">Diagnosis (from request)</label>
+            <textarea
+              className="form-control"
+              rows="3"
+              style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+              value={diagFromRequest || ""}
+              readOnly
+            ></textarea>
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Treatment (from request)</label>
+          <textarea
+            className="form-control"
+            rows="3"
+            style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+            value={treatFromRequest || ""}
+            readOnly
+          ></textarea>
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Reason</label>
+          <textarea
+            className="form-control"
+            rows="3"
+            value={reason}
+            required
+            onChange={(e) => setReason(e.target.value)}
+          ></textarea>
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Auth Code</label>
+          <input
+            type="text"
+            
+            className="form-control"
+            style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+            readOnly
+            value={authCode}
+            onChange={(e) => setAuthCode(e.target.value)}
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Status</label>
+          <select
+            className="form-select"
+            style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+            required
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="approved">Approved</option>
+            <option value="denied">Denied</option>
+          </select>
+        </div>
+
+        <div className="mt-4 text-center">
+          <button
+            className="btn btn-success px-5 rounded-pill shadow-sm"
+            type="button"
+           onClick={handleSendAuthorization}
+            disabled={
+      (status === "denied" && !reason.trim()) ||   // denied requires reason
+      (status === "approved" && !authCode.trim())  // approved requires authCode
+    }
+          //  disabled={!authCode || status == 'denied'  }
+          >
+            Send Authorization
+          </button>
+        
+        </div>
+    
+       
+      
+      </div>
+
+  </div>
+    </div>
+  
+  </div>
+
+
+
+)}
+{/* Success message */}
+{initialId && showSuccessModall && (
+  <div className="d-flex justify-content-center mt-5">
+    <div className="col-md-8 col-lg-6">
+      <div className="alert alert-success text-center shadow-sm p-4">
+        <h6 className="mb-3">Authorization sent successfully!</h6>
+        <button className="btn btn-primary px-4" onClick={onDone}>
+          Back to Requests
+        </button>
       </div>
     </div>
   </div>
 )}
 
-
-
-
-    </div>
-  );
+      </div>
+  
+ );
 }

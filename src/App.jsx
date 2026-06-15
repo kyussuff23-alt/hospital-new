@@ -18,6 +18,8 @@ import RegisterEnrollee from "./RegisterEnrollee";
 import Authorization from "./Authorization";
 import UpdateEnrollee from "./UpdateEnrollee";
 import AddDependant from "./AddDependant";
+import UpdateRequest from "./UpdateRequest";
+
 
 function ProtectedRoute({ isAuthenticated, children }) {
  
@@ -29,11 +31,65 @@ function ProtectedRoute({ isAuthenticated, children }) {
 }
 
 export default function App() {
+  
+ 
+  
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState("");
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+ 
+ 
+  // Inside App.jsx
+const [pendingCount, setPendingCount] = useState(0);
+
+useEffect(() => {
+  // 1. CRITICAL: Stop the effect if the user is not authenticated yet
+  if (!isAuthenticated || !user) return; 
+
+  // Initial fetch (only fires if user is authenticated)
+  const fetchPendingCount = async () => {
+    const { count, error } = await supabase
+      .from("authrequest")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending");
+    if (!error) setPendingCount(count || 0);
+  };
+  fetchPendingCount();
+
+  // Realtime subscription (only initiates once auth token is attached)
+  const channel = supabase
+    .channel("authrequest_changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "authrequest" }, (payload) => {
+      console.log("Realtime change:", payload);
+      if (payload.eventType === "INSERT" && payload.new.status === "pending") {
+        setPendingCount((prev) => prev + 1);
+      }
+      if (payload.eventType === "UPDATE") {
+        if (payload.old.status === "pending" && payload.new.status !== "pending") {
+          setPendingCount((prev) => prev - 1);
+        }
+        if (payload.old.status !== "pending" && payload.new.status === "pending") {
+          setPendingCount((prev) => prev + 1);
+        }
+      }
+      if (payload.eventType === "DELETE" && payload.old.status === "pending") {
+        setPendingCount((prev) => prev - 1);
+      }
+    })
+    .subscribe((status) => console.log("Channel status:", status));
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+// 2. CRITICAL: Add isAuthenticated and user to the dependency array
+}, [isAuthenticated, user]); 
+
+ 
+ 
+ 
+ 
   useEffect(() => {
   let roleFetched = false; // guard flag
 
@@ -83,7 +139,7 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, userRole, setUserRole, user }}>
+    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, userRole, setUserRole, user,pendingCount }}>
       <Router>
         <Routes>
           <Route path="/" element={<AuthPage />} />
@@ -102,9 +158,13 @@ export default function App() {
           <Route path="/updateenrollee" element={<ProtectedRoute isAuthenticated={isAuthenticated}><UpdateEnrollee /></ProtectedRoute>} />
           <Route path="/authorization" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Authorization /></ProtectedRoute>} />
           <Route path="/adddependant" element={<ProtectedRoute isAuthenticated={isAuthenticated}><AddDependant /></ProtectedRoute>} />
+         <Route path="/updaterequest" element={<ProtectedRoute isAuthenticated={isAuthenticated}><UpdateRequest /></ProtectedRoute>} />
+
           <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
         </Routes>
       </Router>
     </AuthContext.Provider>
   );
 }
+
+

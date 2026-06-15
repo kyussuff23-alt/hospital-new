@@ -118,21 +118,23 @@ async function handleDownload() {
       {/* Left side: Register + Analytics */}
       <div className="col-md-8 d-flex gap-2 flex-wrap">
         <button
-          className="btn btn-primary flex-fill"
+          className="btn btn-primary px-4"
           onClick={() => setShowRegisterModal(true)}
         >
           ➕ Register Hospital
         </button>
+{/* 
+<div className="btn btn-warning fw-bold flex-fill">
+  🏥 Total: {hospitals.length}
+</div>
+<div className="btn btn-success fw-bold flex-fill">
+  ✅ Active: {hospitals.filter(h => h.status === "active").length}
+</div>
+<div className="btn btn-danger fw-bold flex-fill">
+  ❌ Inactive: {hospitals.filter(h => h.status === "inactive").length}
+</div> 
+*/}
 
-        <div className="btn btn-warning fw-bold flex-fill">
-          🏥 Total: {hospitals.length}
-        </div>
-        <div className="btn btn-success fw-bold flex-fill">
-          ✅ Active: {hospitals.filter(h => h.status === "active").length}
-        </div>
-        <div className="btn btn-danger fw-bold flex-fill">
-          ❌ Inactive: {hospitals.filter(h => h.status === "inactive").length}
-        </div>
       </div>
 
       {/* Right side: Dropdown + Search */}
@@ -140,7 +142,7 @@ async function handleDownload() {
         <div className="btn-group dropup flex-shrink-0">
           <button
             type="button"
-            className="btn btn-success dropdown-toggle"
+            className="btn btn-primary dropdown-toggle"
             data-bs-toggle="dropdown"
             aria-expanded="false"
           >

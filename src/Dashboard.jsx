@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Provider from "./Provider";
 import Batch from "./Batch";
@@ -14,6 +14,7 @@ import Utilization from "./Utilization";
 import GroupEnrolment from "./GroupEnrolment";
 import Enrolment from "./Enrolment";
 import Authorization from "./Authorization";
+import UpdateRequest from "./UpdateRequest";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -28,7 +29,7 @@ import {
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function Dashboard() {
-  const { user, userRole, setIsAuthenticated } = useAuth();
+  const { user, userRole, setIsAuthenticated,pendingCount } = useAuth();
   const navigate = useNavigate();
 
   const [activePage, setActivePage] = useState("provider");
@@ -40,6 +41,8 @@ export default function Dashboard() {
   const [dateStart, setDateStart] = useState("");
   const [dateEnd, setDateEnd] = useState("");
   const [claims, setClaims] = useState([]);
+
+ 
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -83,31 +86,39 @@ export default function Dashboard() {
             <h6 className="mt-2">Nonsuch Portal</h6>
            
           </div>
-          <ul className="nav flex-column">
-            {[
-              { key: "provider", icon: "bi-people-fill", label: "Provider" },
-              { key: "batch", icon: "bi-box-seam", label: "Batch" },
-              { key: "account", icon: "bi-person-circle", label: "Account" },
-              { key: "claims", icon: "bi-file-earmark-medical", label: "Claims" },
-              { key: "claimstable", icon: "bi-table", label: "Claimstable" },
-              { key: "extractclaims", icon: "bi-search", label: "Extract Claims" },
-              { key: "underwriting", icon: "bi-shield-check", label: "Underwriting" },
-              { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
-              { key: "enrolment", icon: "bi-pencil-square", label: "Enrolment" },
-              { key: "authorization", icon: "bi-check2-circle", label: "Authorization" },
-            ].map((item) => (
-              <li
-                key={item.key}
-                className="nav-item mb-2 p-2 rounded text-white"
-                style={{ cursor: "pointer", transition: "0.3s" }}
-                onClick={() => setActivePage(item.key)}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#0d6efd")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
-              >
-                <i className={`${item.icon} me-2`}></i> {item.label}
-              </li>
-            ))}
-          </ul>
+       <ul className="nav flex-column">
+  {[
+    { key: "provider", icon: "bi-people-fill", label: "Provider" },
+    { key: "batch", icon: "bi-box-seam", label: "Batch" },
+    { key: "account", icon: "bi-person-circle", label: "Account" },
+    { key: "claims", icon: "bi-file-earmark-medical", label: "Claims" },
+    { key: "claimstable", icon: "bi-table", label: "Claimstable" },
+    { key: "extractclaims", icon: "bi-search", label: "Extract Claims" },
+    { key: "underwriting", icon: "bi-shield-check", label: "Underwriting" },
+    { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
+    { key: "enrolment", icon: "bi-pencil-square", label: "Enrolment" },
+    { key: "authorization", icon: "bi-check2-circle", label: "Authorization" },
+    { key: "pendingAuth", icon: "bi-bell", label: "PendingAuth" }, // new item
+  ].map((item) => (
+    <li
+      key={item.key}
+      className="nav-item mb-2 p-2 rounded text-white d-flex align-items-center justify-content-between"
+      style={{ cursor: "pointer", transition: "0.3s" }}
+      onClick={() => setActivePage(item.key)}
+      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#0d6efd")}
+      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+    >
+      <div>
+        <i className={`${item.icon} me-2`}></i> {item.label}
+      </div>
+      {item.key === "pendingAuth" && pendingCount > 0 && (
+        <span className="badge bg-danger">{pendingCount}</span>
+      )}
+    </li>
+  ))}
+</ul>
+
+
         </div>
 
         {/* Profile at bottom of sidebar */}
@@ -201,6 +212,7 @@ export default function Dashboard() {
         {activePage === "groupEnrolment" && <GroupEnrolment />}
         {activePage === "enrolment" && <Enrolment />}
         {activePage === "authorization" && <Authorization />}
+        {activePage === "pendingAuth" && <UpdateRequest />}
       </div>
     </div>
   );
