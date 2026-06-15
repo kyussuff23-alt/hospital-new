@@ -44,11 +44,18 @@ export default function Dashboard() {
 
  
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    setIsAuthenticated(false);
-    navigate("/");
-  }
+async function handleLogout() {
+  await supabase.auth.signOut();
+
+  // Reset authentication state
+  setIsAuthenticated(false);
+
+  // ✅ Do NOT call setUser, setUserRole, or roleFetchedRef here.
+  // Those are managed in App.jsx via onAuthStateChange.
+
+  navigate("/");
+}
+
 
   const handleProfileClick = () => setShowMenu(!showMenu);
 
