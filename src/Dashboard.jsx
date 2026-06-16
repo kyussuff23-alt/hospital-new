@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Provider from "./Provider";
 import Batch from "./Batch";
@@ -14,7 +14,11 @@ import Utilization from "./Utilization";
 import GroupEnrolment from "./GroupEnrolment";
 import Enrolment from "./Enrolment";
 import Authorization from "./Authorization";
+import PendingAuth from "./PendingAuth";
+
 import { Bar } from "react-chartjs-2";
+
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -34,6 +38,9 @@ export default function Dashboard() {
   const [activePage, setActivePage] = useState("provider");
   const [showMenu, setShowMenu] = useState(false);
 
+  const [pendingCount, setPendingCount] = useState(0);
+
+
   // Extractclaims state lifted up
   const [hcpcode, setHcpcode] = useState("");
   const [ticket, setTicket] = useState("");
@@ -41,6 +48,40 @@ export default function Dashboard() {
   const [dateEnd, setDateEnd] = useState("");
   const [claims, setClaims] = useState([]);
 
+ 
+ useEffect(() => {
+  const fetchPending = async () => {
+    const { data, error } = await supabase
+      .from("authrequest")
+      .select("id")
+      .eq("status", "pending");
+
+    if (!error && data) {
+      setPendingCount(data.length);
+    }
+  };
+
+  fetchPending();
+
+  const channel = supabase
+    .channel("authrequest-changes")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "authrequest" },
+      () => {
+        fetchPending(); // refresh count whenever table changes
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
+
+ 
+ 
+ 
   async function handleLogout() {
     await supabase.auth.signOut();
     setIsAuthenticated(false);
@@ -95,6 +136,7 @@ export default function Dashboard() {
               { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
               { key: "enrolment", icon: "bi-pencil-square", label: "Enrolment" },
               { key: "authorization", icon: "bi-check2-circle", label: "Authorization" },
+       
             ].map((item) => (
               <li
                 key={item.key}
@@ -106,7 +148,27 @@ export default function Dashboard() {
               >
                 <i className={`${item.icon} me-2`}></i> {item.label}
               </li>
-            ))}
+           
+           
+           
+           ))}
+         
+         <li
+  key="pendingauth"
+  className="nav-item mb-2 p-2 rounded text-white"
+  style={{ cursor: "pointer", transition: "0.3s" }}
+  onClick={() => setActivePage("pendingauth")}
+  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#0d6efd")}
+  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+>
+  <i className="bi-check2-circle me-2"></i> PendingAuth
+  {pendingCount > 0 && (
+    <span className="badge bg-danger ms-2">{pendingCount}</span>
+  )}
+</li>
+
+         
+         
           </ul>
         </div>
 
@@ -201,6 +263,8 @@ export default function Dashboard() {
         {activePage === "groupEnrolment" && <GroupEnrolment />}
         {activePage === "enrolment" && <Enrolment />}
         {activePage === "authorization" && <Authorization />}
+          {activePage === "pendingauth" && <PendingAuth />}
+      
       </div>
     </div>
   );

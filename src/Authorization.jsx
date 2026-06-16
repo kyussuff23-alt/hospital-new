@@ -98,10 +98,7 @@ const handleSaveAuthorization = async (code) => {
 const handleSendAuthorization = async () => {
  // console.log("Sending authorization:", { initialId, status, reason, authycode });
 
-
- 
-
-  const { error } = await supabase
+const { error } = await supabase
     .from("authrequest")
     .update({
       status,             // enum column: "approved" or "denied"
@@ -122,8 +119,6 @@ const handleSendAuthorization = async () => {
    
   }
 };
-
-
 
 
 const passwordMap = {

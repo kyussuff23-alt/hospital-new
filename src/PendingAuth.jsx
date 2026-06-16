@@ -17,6 +17,8 @@ export default function UpdateRequest() {
       .order("created_at", { ascending: false });
 
     if (!error) setRequests(data);
+    if (error) console.error(error);
+
   };
 
   useEffect(() => {

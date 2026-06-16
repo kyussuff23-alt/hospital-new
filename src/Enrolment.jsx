@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect,useRef,useMemo } from "react";
 import { supabase } from "./supabaseClient";
 import RegisterEnrollee from "./RegisterEnrollee";
 import UpdateEnrollee from "./UpdateEnrollee";
 import * as XLSX from "xlsx";
+import EnrolleeRow from "./EnrolleeRow";
 
 export default function Enrolment() {
   const [enrollees, setEnrollees] = useState([]);
@@ -20,7 +21,9 @@ const [jumpPage, setJumpPage] = useState(1); // input box value
   // Search state
   const [search, setSearch] = useState("");
   const [searchMode, setSearchMode] = useState("policyid");
-
+  const [searchInput, setSearchInput] = useState("");
+  
+  
   // Filters
   const [clientFilter, setClientFilter] = useState("");
   const [providerFilter, setProviderFilter] = useState("");
@@ -30,17 +33,34 @@ const [jumpPage, setJumpPage] = useState(1); // input box value
   const [providers, setProviders] = useState([]);
 
   
+   // 🔑 Ref for debounce timer
+  const debounceRef = useRef(null);
+  
   
   useEffect(() => {
   setJumpPage(page + 1);
 }, [page]);
 
-  // ✅ Fetch enrollee list on mount and whenever filters change
-useEffect(() => {
-  fetchEnrollees();
-}, [clientFilter, providerFilter, search, searchMode, page]);
+  
+// ✅ Debounced effect for search/filter changes
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      fetchEnrollees();
+    }, 500); // wait 500ms after typing stops
+
+    return () => clearTimeout(debounceRef.current);
+  }, [clientFilter, providerFilter, search, searchMode, page]);
 
   useEffect(() => {
+    fetchDropdowns();
+  }, []);
+
+
+ useEffect(() => {
     fetchDropdowns();
   }, []);
 
@@ -204,15 +224,20 @@ async function handleReactivate() {
     XLSX.writeFile(workbook, "enrolment_export.xlsx");
   }
 
-  // ✅ Filter logic for search
-  const filteredEnrollees = enrollees.filter((e) => {
-    if (searchMode === "policyid") {
-      return (e.policyid || "").toLowerCase().includes(search.toLowerCase());
-    } else if (searchMode === "enrolleename") {
-      return (e.enrolleename || "").toLowerCase().includes(search.toLowerCase());
-    }
-    return true;
-  });
+ // ✅ Memoize filtered list to prevent stutter
+  const filteredEnrollees = useMemo(() => {
+    return enrollees.filter((e) => {
+      if (searchMode === "policyid") {
+        return (e.policyid || "").toLowerCase().includes(search.toLowerCase());
+      } else if (searchMode === "enrolleename") {
+        return (e.enrolleename || "").toLowerCase().includes(search.toLowerCase());
+      }
+      return true;
+    });
+  }, [enrollees, search, searchMode]);
+
+  // ... keep handleDeactivate, handleReactivate, handleUpdateClick, handleExport
+
 
   return (
     <div className="container mt-4">
@@ -307,14 +332,23 @@ async function handleReactivate() {
   </div>
 
   {/* Search input */}
-  <input
-    type="text"
-    className="form-control form-control-sm"
-    style={{ width: "160px" }}
-    placeholder={`Search by ${searchMode}`}
-    value={search}
-    onChange={(e) => setSearch(e.target.value)}
-  />
+ <input
+  type="text"
+  value={searchInput}
+  onChange={(e) => {
+    const val = e.target.value;
+    setSearchInput(val);
+    if (val === "") {
+      setSearch("");   // ✅ clear search when input is empty
+    }
+  }}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      setSearch(searchInput);   // commit only on Enter
+    }
+  }}
+/>
+
 
   {/* Deactivate / Reactivate buttons */}
   <button className="btn btn-danger btn-sm" onClick={handleDeactivate}>
@@ -329,6 +363,7 @@ async function handleReactivate() {
       
       {/* Enrollee table */}
       <table className="table table-bordered table-striped">
+        
         <thead className="table-dark">
           <tr>
             <th>S/N</th>
@@ -344,37 +379,25 @@ async function handleReactivate() {
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody>
-          {filteredEnrollees.map((e, i) => (
-            <tr key={e.id}>
-              <td>{i + 1}</td>
-              <td>{e.client}</td>
-              <td>{e.enrolleename}</td>
-              <td>{e.policyid}</td>
-              <td>{e.oldpolicy}</td>
-              <td>{e.familystatus}</td>
-              <td>{e.plan}</td>
-              <td>{e.provider}</td>
-              <td>{e.gender}</td>
-              <td>{e.maritalstatus}</td>
-              <td>
-                <button
-                  className="btn btn-sm btn-warning me-2"
-                  onClick={() => handleUpdateClick(e)}
-                >
-                  Update
-                </button>
-              </td>
-            </tr>
-          ))}
-          {filteredEnrollees.length === 0 && (
-            <tr>
-              <td colSpan="11" className="text-center">
-                No enrollees found.
-              </td>
-            </tr>
-          )}
-        </tbody>
+      
+       <tbody>
+  {filteredEnrollees.map((e, i) => (
+    <EnrolleeRow
+      key={e.id}
+      enrollee={e}
+      index={i}
+      onUpdateClick={handleUpdateClick}
+    />
+  ))}
+  {filteredEnrollees.length === 0 && (
+    <tr>
+      <td colSpan="11" className="text-center">
+        No enrollees found.
+      </td>
+    </tr>
+  )}
+</tbody>
+
       </table>
 
       <div className="d-flex justify-content-between align-items-center mt-3">
