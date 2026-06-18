@@ -10,9 +10,9 @@ export default function Enrolment() {
   const [selectedEnrollee, setSelectedEnrollee] = useState(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-const [totalCount, setTotalCount] = useState(0);
-const [page, setPage] = useState(0);
-const pageSize = 20;
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(0);
+   const pageSize = 20;
                 // records per page
 const totalPages = Math.ceil(totalCount / pageSize);
 const [jumpPage, setJumpPage] = useState(1); // input box value
@@ -144,7 +144,8 @@ async function handleReactivate() {
     if (clientFilter) query = query.eq("client", clientFilter.trim());
     if (providerFilter) query = query.eq("provider", providerFilter.trim());
 
-    // Search
+    // Search  WHERE THE DATABASE IS QUERIED FOR RECOORD 
+    
     if (search) {
       if (searchMode === "policyid") {
         query = query.ilike("policyid", `%${search}%`);

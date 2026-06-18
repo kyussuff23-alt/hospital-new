@@ -190,19 +190,40 @@ export default function UpdateEnrollee({ enrollee, show, onClose, onUpdated }) {
       .join(" ");
     setForm({ ...form, enrolleename: value });
   }
+function getPlanPrefix(plan) {
+  if (!plan) return "";
+  switch (plan.toLowerCase()) {
+    case "standard": return "ST";
+    case "silver":   return "SL";
+    case "gold":     return "GD";
+    case "platinum": return "PL";
+    default:         return plan.slice(0, 2).toUpperCase();
+  }
+}
 
-  function generatePolicyId(client, plan) {
-    if (!client || !plan) return "";
-    const randomSix = Math.floor(100000 + Math.random() * 900000);
-    const planPrefix = plan.slice(0, 2).toUpperCase();
-    return `51/${client}/${randomSix}/0/${planPrefix}`;
+function updateExistingPolicyId(currentPolicyId, newPlan) {
+  const planPrefix = getPlanPrefix(newPlan);
+
+  if (currentPolicyId && currentPolicyId.includes("/")) {
+    const parts = currentPolicyId.split("/");
+    if (parts.length === 5) {
+      // ✅ Preserve client, randomSix, and index
+      parts[4] = planPrefix;
+      return parts.join("/");
+    }
   }
 
-  function handlePlanChange(e) {
-    const plan = e.target.value;
-    const policyid = generatePolicyId(form.client, plan);
-    setForm({ ...form, plan, policyid });
-  }
+  // Fallback: if no existing ID, generate fresh
+  const randomSix = Math.floor(100000 + Math.random() * 900000);
+  return `51/${form.client}/${randomSix}/0/${planPrefix}`;
+}
+
+function handlePlanChange(e) {
+  const plan = e.target.value;
+  const policyid = updateExistingPolicyId(form.policyid, plan);
+  setForm({ ...form, plan, policyid });
+}
+
 
   function handlePhotoSelect(e) {
     const file = e.target.files[0];
@@ -459,7 +480,7 @@ return (
               className="form-select"
             >
               {" "}
-              <option value="">Select Plan</option>{" "}
+              <option value="" disabled>Select Plan</option>{" "}
               {planOptions.map((p) => (
                 <option key={p} value={p}>
                   {" "}

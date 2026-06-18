@@ -137,3 +137,5 @@ export default function App() {
   );
 }
 // 💡 Note: Removed the duplicate, competing ProtectedRoute declaration that was sitting at the bottom of the file
+
+

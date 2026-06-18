@@ -74,15 +74,44 @@ export default function Batch() {
     setShowUpdateModal(true);
   }
 
-  // 🔎 Search + Pagination
-  const filteredBatches = batches.filter((b) =>
-    (b.batchnumber || "").toLowerCase().includes(search.toLowerCase()) ||
-    (b.hospname || "").toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+  const fetchBatches = async () => {
+    if (!selectedClient) return;
 
-  const indexOfLastRow = currentPage * rowsPerPage;
-  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentBatches = filteredBatches.slice(indexOfFirstRow, indexOfLastRow);
+    let query = supabase
+      .from("batch")
+      .select("*")
+      .eq("client", selectedClient)
+      .order("id");
+
+    // ✅ Apply search directly in Supabase query
+    if (search) {
+      query = query.or(
+        `batchnumber.ilike.%${search}%,hospname.ilike.%${search}%`
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Error fetching batches:", error.message);
+    } else {
+      setBatches(data);
+    }
+  };
+
+  fetchBatches();
+}, [selectedBatch, search]);
+
+// 🔎 Search + Pagination
+const filteredBatches = batches.filter((b) =>
+  (b.batchnumber || "").toLowerCase().includes(search.toLowerCase()) ||
+  (b.hospname || "").toLowerCase().includes(search.toLowerCase())
+);
+
+const indexOfLastRow = currentPage * rowsPerPage;
+const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+const currentBatches = filteredBatches.slice(indexOfFirstRow, indexOfLastRow);
+
 
   return (
     <div className="container mt-4">

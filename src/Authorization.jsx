@@ -253,36 +253,36 @@ const handleDenyDrug = () => {
     fetchClients();
   }, []);
 
-  // Fetch enrolments
-  useEffect(() => {
-    const fetchEnrolments = async () => {
-      if (!selectedClient) return;
-      const { data, error } = await supabase
-        .from("myenrolment")
-        .select("*")
-        .eq("client", selectedClient);
-      if (error) console.error("Error fetching enrolments:", error.message);
-      else setEnrolments(data);
-    };
-    fetchEnrolments();
-  }, [selectedClient]);
-
-  // Live search
- 
+  // Fetch enrolments  This is corrected 
+ // Fetch enrolments
 useEffect(() => {
-  if (!searchTerm) {
-    setFilteredResults([]);
-    setSelectedResult(null);
-    return;
-  }
-  const normalizedTerm = searchTerm.trim().toLowerCase();
-  const results = enrolments.filter((e) =>
-    e.policyid?.toLowerCase().includes(normalizedTerm) ||
-    e.enrolleename?.trim().toLowerCase().includes(normalizedTerm)
-  );
-  setFilteredResults(results);
-}, [searchTerm, enrolments]);
+  const fetchEnrolments = async () => {
+    if (!selectedClient) return;
 
+    let query = supabase
+      .from("myenrolment")
+      .select("*")
+      .eq("client", selectedClient)
+      .order("id");
+
+    // ✅ Apply search directly in Supabase query
+    if (searchTerm) {
+      query = query.or(
+        `policyid.ilike.%${searchTerm}%,enrolleename.ilike.%${searchTerm}%`
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Error fetching enrolments:", error.message);
+    } else {
+      setEnrolments(data);
+      setFilteredResults(data); // dropdown continues as before
+    }
+  };
+
+  fetchEnrolments();
+}, [selectedClient, searchTerm]);
 
   
   
@@ -576,53 +576,34 @@ useEffect(() => {
         </div>
       )}
 
-     
+{/* Success Alert */}
 {showSuccessModal && (
-  <>
-    {/* Backdrop */}
-    <div className="modal-backdrop fade show"></div>
+  <div className="alert alert-success d-flex align-items-center justify-content-between mt-3 p-2">
+    <span>
+      ✅ Authorization saved successfully
+      {authCode && (
+        <strong className="ms-2">Code: {authCode}</strong>
+      )}
+    </span>
 
-    {/* Modal */}
-    <div className="modal fade show d-block" tabIndex="-1" role="dialog">
-      <div className="modal-dialog modal-dialog-centered" role="document">
-        <div className="modal-content">
-          <div className="modal-header bg-success text-white">
-            <h5 className="modal-title">Success</h5>
-            <button
-              type="button"
-              className="btn-close btn-close-white"
-              onClick={() => setShowSuccessModal(false)}
-            ></button>
-          </div>
-          <div className="modal-body text-center">
-            <p>Success.</p>
-
-            {/* ✅ Show Auth Code here */}
-            {authCode && (
-              <div className="alert alert-info mt-3">
-                <strong>Auth Code:</strong> {authCode}
-                <button
-                  className="btn btn-sm btn-outline-secondary ms-3"
-                  onClick={() => navigator.clipboard.writeText(authCode)}
-                >
-                  Copy
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-light"
-              onClick={() => setShowSuccessModal(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
+    <div>
+      {authCode && (
+        <button
+          className="btn btn-sm btn-outline-light me-2"
+          onClick={() => navigator.clipboard.writeText(authCode)}
+        >
+          Copy
+        </button>
+      )}
+      <button
+        type="button"
+        className="btn btn-sm btn-light"
+        onClick={() => setShowSuccessModal(false)}
+      >
+        Close
+      </button>
     </div>
-  </>
+  </div>
 )}
 
 
