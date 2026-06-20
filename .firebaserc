@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "nonsuchenterprise-948c4",
+    "nonsuchfrontend": "nonsuchenterprise-app"
+  },
+  "targets": {},
+  "etags": {}
+}

@@ -10,7 +10,7 @@ export default function Batch() {
   const { userRole, isAuthenticated, setIsAuthenticated } = useAuth();
 
 
-  console.log("Batch received userRole:", userRole + typeof userRole);
+ // console.log("Batch received userRole:", userRole + typeof userRole);
   
   const [batches, setBatches] = useState([]);
   const [search, setSearch] = useState("");
@@ -30,6 +30,7 @@ export default function Batch() {
     minimumFractionDigits: 2,
   }).format(value);
 }
+
 
 
   useEffect(() => {
@@ -74,15 +75,12 @@ export default function Batch() {
     setShowUpdateModal(true);
   }
 
-  useEffect(() => {
+ useEffect(() => {
   const fetchBatches = async () => {
-    if (!selectedClient) return;
-
     let query = supabase
-      .from("batch")
+      .from("mybatch") // ✅ correct table
       .select("*")
-      .eq("client", selectedClient)
-      .order("id");
+      .order("id", { ascending: true });
 
     // ✅ Apply search directly in Supabase query
     if (search) {
@@ -94,13 +92,14 @@ export default function Batch() {
     const { data, error } = await query;
     if (error) {
       console.error("Error fetching batches:", error.message);
+      setError(error.message);
     } else {
       setBatches(data);
     }
   };
 
   fetchBatches();
-}, [selectedBatch, search]);
+}, [search]);
 
 // 🔎 Search + Pagination
 const filteredBatches = batches.filter((b) =>
