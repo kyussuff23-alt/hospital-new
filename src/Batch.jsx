@@ -139,55 +139,58 @@ const currentBatches = filteredBatches.slice(indexOfFirstRow, indexOfLastRow);
 
       <div className="table-responsive">
         <table className="table table-striped table-hover table-bordered">
-          <thead className="table-dark">
-            <tr>
-              <th>S/N</th>
-              <th>Batch Number</th>
-              <th>Hospital Name</th>
-              <th>Utilization Month</th>
-              <th>Year</th>
-              <th>Bill Amount</th>
-              <th>Claims Type</th>
-              <th>HCP Code</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentBatches.map((b, index) => (
-              <tr key={b.id}>
-                <td>{indexOfFirstRow + index + 1}</td>
-                <td>{b.batchnumber}</td>
-                <td>{b.hospname}</td>
-                <td>{b.utilizationmonth}</td>
-                <td>{b.year}</td>
-           <td>{formatNaira(b.billamount)}</td>
+         <thead className="table-dark">
+  <tr>
+    <th>S/N</th>
+    <th>Date</th> {/* ✅ New column */}
+    <th>Batch Number</th>
+    <th>Hospital Name</th>
+    <th>Utilization Month</th>
+    <th>Year</th>
+    <th>Bill Amount</th>
+    <th>Claims Type</th>
+    <th>HCP Code</th>
+    <th>Actions</th>
+  </tr>
+</thead>
+<tbody>
+  {currentBatches.map((b, index) => (
+    <tr key={b.id}>
+      <td>{indexOfFirstRow + index + 1}</td>
+      <td>
+        {b.created_at
+          ? new Date(b.created_at).toLocaleDateString("en-NG", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          : ""}
+      </td>
+      <td>{b.batchnumber}</td>
+      <td>{b.hospname}</td>
+      <td>{b.utilizationmonth}</td>
+      <td>{b.year}</td>
+      <td>{formatNaira(b.billamount)}</td>
+      <td>{b.claimstype}</td>
+      <td>{b.hcpcode}</td>
+      <td>
+        <button
+          className="btn btn-sm btn-warning me-2"
+          onClick={() => handleUpdate(b)}
+        >
+          Update
+        </button>
+        <button
+          className="btn btn-sm btn-danger"
+          onClick={() => handleDelete(b.id)}
+        >
+          Delete
+        </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
 
-                <td>{b.claimstype}</td>
-                <td>{b.hcpcode}</td>
-                <td>
-                  <button
-                    className="btn btn-sm btn-warning me-2"
-                    onClick={() => handleUpdate(b)}
-                  >
-                    Update
-                  </button>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() => handleDelete(b.id)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {currentBatches.length === 0 && (
-              <tr>
-                <td colSpan="9" className="text-center">
-                  No claims found.
-                </td>
-              </tr>
-            )}
-          </tbody>
         </table>
       </div>
 
