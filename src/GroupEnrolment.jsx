@@ -65,12 +65,20 @@ export default function GroupEnrolment() {
 
   return (
     <div className="container mt-4">
-      <button
-        className="btn btn-primary mb-3"
-        onClick={() => setShowRegisterModal(true)}
-      >
-        ➕ Register Client
-      </button>
+      {/* ⚠️ CORRECTION: Transformed the stock primary button into an elegant action link */}
+<div className="mb-3">
+  <span
+    className="text-primary fw-semibold d-inline-flex align-items-center"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={() => setShowRegisterModal(true)}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#0a58ca")} // Professional darker blue on hover
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-plus-circle-fill me-2" style={{ fontSize: "1.1rem" }}></i> 
+    Register Client
+  </span>
+</div>
+
 
       {/* Automatic Notifications */}
       {notifications.length > 0 && (
@@ -94,8 +102,7 @@ export default function GroupEnrolment() {
             <th>Premium</th>
             <th>Family Status</th>
             <th>Band Allowed</th>
-            <th>Activate</th>
-             <th>DependantAge</th>
+         
             <th>Actions</th>
           </tr>
         </thead>
@@ -117,24 +124,38 @@ export default function GroupEnrolment() {
 
               <td>{g.familystatus}</td>
               <td>{g.bandallowed}</td>
-              <td>{g.activate}</td>
-              <td>{g.dependantage}</td>
+            
               <td>
-                <button
-                  className="btn btn-sm btn-warning me-2"
-                  onClick={() => {
-                    setSelectedGroup(g);
-                    setShowUpdateModal(true);
-                  }}
-                >
-                  Update
-                </button>
-                <button
-                  className="btn btn-sm btn-danger"
-                  onClick={() => handleDeactivate(g.id)}
-                >
-                  Deactivate
-                </button>
+               {/* ⚠️ CORRECTION: Transformed grouped action buttons into clean, inline text action links */}
+<div className="d-flex align-items-center gap-3">
+  
+  {/* Update Action Link */}
+  <span
+    className="text-primary fw-medium d-inline-flex align-items-center small"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={() => {
+      setSelectedGroup(g);
+      setShowUpdateModal(true);
+    }}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#0a58ca")} // Darker dashboard blue on hover
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-pencil-square me-1"></i> Update
+  </span>
+
+  {/* Deactivate Action Link */}
+  <span
+    className="text-danger fw-medium d-inline-flex align-items-center small"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={() => handleDeactivate(g.id)}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#a51d24")} // Darker red on hover
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-dash-circle-fill me-1"></i> Deactivate
+  </span>
+
+</div>
+
               </td>
             </tr>
           ))}

@@ -139,14 +139,31 @@ export default function Updateclaims({ claim, show, onHide, onSuccess }) {
             <Form.Label>Provider</Form.Label>
             <Form.Control value={claim?.provider} readOnly />
           </Form.Group>
-          <Form.Group className="mb-2">
-            <Form.Label>Services</Form.Label>
-            <Form.Control value={claim?.services} readOnly />
-          </Form.Group>
-          <Form.Group className="mb-2">
-            <Form.Label>Diagnosis</Form.Label>
-            <Form.Control value={claim?.diagnosis} readOnly />
-          </Form.Group>
+         {/* ⚠️ CORRECTION: Converted flat single-line inputs into spacious, read-only textareas */}
+<Form.Group className="mb-3">
+  <Form.Label className="fw-semibold text-secondary">Services</Form.Label>
+  <Form.Control 
+    as="textarea" 
+    rows={3} 
+    value={claim?.services} 
+    readOnly 
+    className="bg-white border-secondary-subtle"
+    style={{ resize: "none" }} // Prevents users from dragging and distorting the card layout
+  />
+</Form.Group>
+
+<Form.Group className="mb-3">
+  <Form.Label className="fw-semibold text-secondary">Diagnosis</Form.Label>
+  <Form.Control 
+    as="textarea" 
+    rows={3} 
+    value={claim?.diagnosis} 
+    readOnly 
+    className="bg-white border-secondary-subtle"
+    style={{ resize: "none" }} // Keeps the box dimensions uniform and clean
+  />
+</Form.Group>
+
 
           {/* Editable fields */}
           <Form.Group className="mb-2">

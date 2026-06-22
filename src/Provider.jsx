@@ -117,25 +117,21 @@ async function handleDownload() {
     <div className="row mb-3 g-2">
       {/* Left side: Register + Analytics */}
       <div className="col-md-8 d-flex gap-2 flex-wrap">
-        <button
-          className="btn btn-primary px-4"
-          onClick={() => setShowRegisterModal(true)}
-        >
-          ➕ Register Hospital
-        </button>
-{/* 
-<div className="btn btn-warning fw-bold flex-fill">
-  🏥 Total: {hospitals.length}
+       {/* ⚠️ CORRECTION: Transformed the stock primary button into an elegant action link */}
+<div className="mb-3">
+  <span
+    className="text-primary fw-semibold d-inline-flex align-items-center"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={() => setShowRegisterModal(true)}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#0a58ca")} // Professional darker blue on hover
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-plus-circle-fill me-2" style={{ fontSize: "1.1rem" }}></i> 
+    Register Hospital
+  </span>
 </div>
-<div className="btn btn-success fw-bold flex-fill">
-  ✅ Active: {hospitals.filter(h => h.status === "active").length}
-</div>
-<div className="btn btn-danger fw-bold flex-fill">
-  ❌ Inactive: {hospitals.filter(h => h.status === "inactive").length}
-</div> 
-*/}
 
-      </div>
+  </div>
 
       {/* Right side: Dropdown + Search */}
       <div className="col-md-4 d-flex gap-2">
@@ -212,20 +208,31 @@ async function handleDownload() {
                 <td>{h.status}</td>
                 <td>{h.band}</td>
                 <td>
-                  <button
-                    className="btn btn-sm btn-warning me-2"
-                    style={{ minWidth: "100px" }}
-                    onClick={() => handleUpdate(h)}
-                  >
-                    Update
-                  </button>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    style={{ minWidth: "100px" }}
-                    onClick={() => handleDeactivate(h.id)}
-                  >
-                    Deactivate
-                  </button>
+                 
+                 {/* ⚠️ CORRECTION: Transformed buttons into clean inline links without touching outer elements */}
+<div className="d-flex align-items-center gap-3">
+  <span
+    className="text-primary fw-medium d-inline-flex align-items-center small"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={() => handleUpdate(h)}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#0a58ca")}
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-pencil-square me-1"></i> Update
+  </span>
+
+  <span
+    className="text-danger fw-medium d-inline-flex align-items-center small"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={() => handleDeactivate(h.id)}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#a51d24")}
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-dash-circle-fill me-1"></i> Deactivate
+  </span>
+</div>
+
+               
                 </td>
               </tr>
             ))}

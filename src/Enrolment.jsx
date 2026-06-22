@@ -244,20 +244,33 @@ async function handleReactivate() {
     <div className="container mt-4">
       {/* Action buttons */}
       <div className="d-flex justify-content-between mb-3">
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowRegisterModal(true)}
-        >
-          ➕ Register Enrollee
-        </button>
+       {/* ⚠️ CORRECTION: Transformed stock button layouts into clean, modern dashboard links */}
+<div className="d-flex align-items-center gap-4">
+  
+  {/* Register Enrollee Link */}
+  <span
+    className="text-primary fw-semibold d-inline-flex align-items-center"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={() => setShowRegisterModal(true)}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#0a58ca")} // Darker blue on hover
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-person-plus-fill me-2" style={{ fontSize: "1.1rem" }}></i> 
+    Register Enrollee
+  </span>
 
-        <button
-          className="btn btn-success"
-          onClick={() => alert("Bulk upload feature coming soon!")}
-          disabled
-        >
-          📂 Upload Bulk
-        </button>
+  {/* Upload Bulk Link (Disabled style matching your logic) */}
+  <span 
+    className="text-muted fw-semibold d-inline-flex align-items-center opacity-50" 
+    style={{ cursor: "not-allowed" }}
+    onClick={() => alert("Bulk upload feature coming soon!")}
+  >
+    <i className="bi bi-folder-fill me-2" style={{ fontSize: "1.1rem" }}></i> 
+    Upload Bulk
+  </span>
+
+</div>
+
       </div>
 {/* Filters */}
 <div className="row mb-3 align-items-end">
@@ -349,15 +362,34 @@ async function handleReactivate() {
     }
   }}
 />
+ {/* Deactivate / Reactivate buttons */}
+{/* ⚠️ CORRECTION: Converted Deactivate and Reactivate buttons into clean action links */}
+<div className="d-flex align-items-center gap-3">
+  
+  {/* Deactivate Link */}
+  <span
+    className="text-danger fw-medium d-inline-flex align-items-center small"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={handleDeactivate}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#a51d24")} // Darker red on hover
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-dash-circle-fill me-1"></i> Deactivate
+  </span>
 
+  {/* Reactivate Link */}
+  <span
+    className="text-primary fw-medium d-inline-flex align-items-center small"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={handleReactivate}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#0a58ca")} // Darker blue on hover
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-arrow-counterclockwise me-1"></i> Reactivate
+  </span>
 
-  {/* Deactivate / Reactivate buttons */}
-  <button className="btn btn-danger btn-sm" onClick={handleDeactivate}>
-    Deactivate
-  </button>
-  <button className="btn btn-primary btn-sm" onClick={handleReactivate}>
-    Reactivate
-  </button>
+</div>
+
 </div>
 
     </div> {/* ✅ closes the row properly */}    
@@ -401,70 +433,79 @@ async function handleReactivate() {
 
       </table>
 
-      <div className="d-flex justify-content-between align-items-center mt-3">
-  <button
-    className="btn btn-secondary"
-    onClick={() => setPage(0)}
-    disabled={page === 0}
-  >
-    ⏮ First
-  </button>
+     {/* ⚠️ CORRECTION: Transformed complete stock multi-button pagination layout into centered, elegant action links */}
+<div className="w-100 d-flex flex-column align-items-center gap-3 mt-4">
+  
+  <div className="d-flex align-items-center justify-content-center gap-3 flex-wrap">
+    
+    {/* First Page Link */}
+    <span
+      className={`fw-medium small ${page === 0 ? 'text-muted opacity-50' : 'text-primary'}`}
+      style={{ cursor: page === 0 ? "not-allowed" : "pointer", transition: "0.2s" }}
+      onClick={() => page > 0 && setPage(0)}
+    >
+      <i className="bi bi-chevron-bar-left me-1"></i> First
+    </span>
 
-  <button
-    className="btn btn-secondary"
-    onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-    disabled={page === 0}
-  >
-    ◀ Previous
-  </button>
+    {/* Previous Page Link */}
+    <span
+      className={`fw-medium small ${page === 0 ? 'text-muted opacity-50' : 'text-primary'}`}
+      style={{ cursor: page === 0 ? "not-allowed" : "pointer", transition: "0.2s" }}
+      onClick={() => page > 0 && setPage((prev) => Math.max(prev - 1, 0))}
+    >
+      <i className="bi bi-chevron-left me-1"></i> Previous
+    </span>
 
-  <span>
-    Page {page + 1} of {totalPages}
-  </span>
+    {/* Page Indicator Badge */}
+    <span className="text-secondary bg-light px-3 py-1.5 rounded-pill border fw-semibold small">
+      Page {page + 1} of {totalPages}
+    </span>
 
-  <button
-    className="btn btn-secondary"
-    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
-    disabled={page >= totalPages - 1}
-  >
-    Next ▶
-  </button>
+    {/* Next Page Link */}
+    <span
+      className={`fw-medium small ${page >= totalPages - 1 ? 'text-muted opacity-50' : 'text-primary'}`}
+      style={{ cursor: page >= totalPages - 1 ? "not-allowed" : "pointer", transition: "0.2s" }}
+      onClick={() => page < totalPages - 1 && setPage((prev) => Math.min(prev + 1, totalPages - 1))}
+    >
+      Next <i className="bi bi-chevron-right ms-1"></i>
+    </span>
 
-  <button
-    className="btn btn-secondary"
-    onClick={() => setPage(totalPages - 1)}
-    disabled={page >= totalPages - 1}
-  >
-    Last ⏭
-  </button>
+    {/* Last Page Link */}
+    <span
+      className={`fw-medium small ${page >= totalPages - 1 ? 'text-muted opacity-50' : 'text-primary'}`}
+      style={{ cursor: page >= totalPages - 1 ? "not-allowed" : "pointer", transition: "0.2s" }}
+      onClick={() => page < totalPages - 1 && setPage(totalPages - 1)}
+    >
+      Last <i className="bi bi-chevron-bar-right ms-1"></i>
+    </span>
 
-  {/* Jump to page input */}
-<input
-  type="number"
-  min="1"
-  max={totalPages}
-  value={jumpPage}
-  onChange={(e) => setJumpPage(e.target.value)}   // ✅ allow typing
-  onBlur={() => {
-    const targetPage = Number(jumpPage) - 1;
-    if (targetPage >= 0 && targetPage < totalPages) {
-      setPage(targetPage);
-    } else {
-      setJumpPage(page + 1);   // reset if invalid
-    }
-  }}
-  className="form-control ms-2"
-  style={{ width: "80px" }}
-/>
+    {/* Jump to page input wrapper */}
+    <div className="d-flex align-items-center ms-2 gap-2">
+      <span className="text-muted small">Go to:</span>
+      <input
+        type="number"
+        min="1"
+        max={totalPages}
+        value={jumpPage}
+        onChange={(e) => setJumpPage(e.target.value)}
+        onBlur={() => {
+          const targetPage = Number(jumpPage) - 1;
+          if (targetPage >= 0 && targetPage < totalPages) {
+            setPage(targetPage);
+          } else {
+            setJumpPage(page + 1);
+          }
+        }}
+        className="form-control form-control-sm border-secondary-subtle text-center"
+        style={{ width: "65px", borderRadius: "6px" }}
+      />
+    </div>
 
+  </div>
 </div>
 
-  
-         
-         
-         
-         
-           {/* ✅ Register Modal */}
+
+ {/* ✅ Register Modal */}
       {showRegisterModal && (
         <RegisterEnrollee
           show={showRegisterModal}

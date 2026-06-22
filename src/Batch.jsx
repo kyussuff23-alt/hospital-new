@@ -115,16 +115,35 @@ const currentBatches = filteredBatches.slice(indexOfFirstRow, indexOfLastRow);
   return (
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowRegisterModal(true)}
-        >
-          ➕ Register Claims
-        </button>
+       {/* ⚠️ CORRECTION: Swapped buttons for clean, interactive dashboard action links */}
+<div className="d-flex align-items-center gap-4">
+  
+  {/* Register Claims Link */}
+  <span
+    className="text-primary fw-semibold d-inline-flex align-items-center"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={() => setShowRegisterModal(true)}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#0a58ca")} // Darker blue on hover
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-plus-circle-fill me-2" style={{ fontSize: "1.1rem" }}></i> 
+    Register Claims
+  </span>
 
-        <button className="btn btn-success ms-2" onClick={handleDownload}>
-          ⬇️ Download Excel
-        </button>
+  {/* Download Excel Link */}
+  <span 
+    className="text-success fw-semibold d-inline-flex align-items-center" 
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={handleDownload}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#146c43")} // Darker green on hover
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-file-earmark-arrow-down-fill me-2" style={{ fontSize: "1.1rem" }}></i> 
+    Download Excel
+  </span>
+
+</div>
+
 
         <input
           type="text"
@@ -174,18 +193,23 @@ const currentBatches = filteredBatches.slice(indexOfFirstRow, indexOfLastRow);
       <td>{b.claimstype}</td>
       <td>{b.hcpcode}</td>
       <td>
-        <button
-          className="btn btn-sm btn-warning me-2"
-          onClick={() => handleUpdate(b)}
-        >
-          Update
-        </button>
-        <button
-          className="btn btn-sm btn-danger"
-          onClick={() => handleDelete(b.id)}
-        >
-          Delete
-        </button>
+       {/* ⚠️ CORRECTION: Swapped chunky block buttons for elegant inline text action links */}
+<span 
+  className="text-primary fw-medium me-3" 
+  style={{ cursor: "pointer" }}
+  onClick={() => handleUpdate(b)}
+>
+  <i className="bi bi-pencil-square me-1"></i> Update
+</span>
+
+<span 
+  className="text-danger fw-medium" 
+  style={{ cursor: "pointer" }}
+  onClick={() => handleDelete(b.id)}
+>
+  <i className="bi bi-trash me-1"></i> Delete
+</span>
+
       </td>
     </tr>
   ))}
@@ -194,34 +218,43 @@ const currentBatches = filteredBatches.slice(indexOfFirstRow, indexOfLastRow);
         </table>
       </div>
 
-      {/* Pagination */}
-      <div className="d-flex justify-content-between align-items-center mt-3">
-        <button
-          className="btn btn-secondary"
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-        >
-          Previous
-        </button>
+          {/* Pagination Container */}
+      {/* ⚠️ CORRECTION: Changed layout container to completely center its contents instead of splitting edges */}
+      <div className="w-100 d-flex justify-content-center align-items-center mt-4">
+        <div className="d-flex align-items-center gap-3">
+          
+          {/* Previous Page Link */}
+          <span
+            className={`fw-medium ${currentPage === 1 ? 'text-muted opacity-50' : 'text-primary'}`}
+            style={{ cursor: currentPage === 1 ? "not-allowed" : "pointer", transition: "0.2s" }}
+            onClick={() => currentPage > 1 && setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          >
+            <i className="bi bi-chevron-left me-1"></i> Previous
+          </span>
 
-        <span>
-          Page {currentPage} of {Math.ceil(filteredBatches.length / rowsPerPage)}
-        </span>
+          {/* Page Indicator Badge */}
+          <span className="text-secondary bg-light px-3 py-2 rounded-pill border fw-semibold small">
+            Page {currentPage} of {Math.ceil(filteredBatches.length / rowsPerPage)}
+          </span>
 
-        <button
-          className="btn btn-secondary"
-          onClick={() =>
-            setCurrentPage((prev) =>
-              prev < Math.ceil(filteredBatches.length / rowsPerPage)
-                ? prev + 1
-                : prev
-            )
-          }
-          disabled={currentPage === Math.ceil(filteredBatches.length / rowsPerPage)}
-        >
-          Next
-        </button>
+          {/* Next Page Link */}
+          <span
+            className={`fw-medium ${currentPage === Math.ceil(filteredBatches.length / rowsPerPage) ? 'text-muted opacity-50' : 'text-primary'}`}
+            style={{ 
+              cursor: currentPage === Math.ceil(filteredBatches.length / rowsPerPage) ? "not-allowed" : "pointer", 
+              transition: "0.2s" 
+            }}
+            onClick={() => 
+              currentPage < Math.ceil(filteredBatches.length / rowsPerPage) && 
+              setCurrentPage((prev) => prev + 1)
+            }
+          >
+            Next <i className="bi bi-chevron-right ms-1"></i>
+          </span>
+
+        </div>
       </div>
+
 
       {showUpdateModal && (
         <Updatebatch

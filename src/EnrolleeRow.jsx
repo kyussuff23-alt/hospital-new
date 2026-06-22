@@ -14,12 +14,18 @@ const EnrolleeRow = React.memo(function EnrolleeRow({ enrollee, index, onUpdateC
       <td>{enrollee.gender}</td>
       <td>{enrollee.maritalstatus}</td>
       <td>
-        <button
-          className="btn btn-sm btn-warning me-2"
-          onClick={() => onUpdateClick(enrollee)}
-        >
-          Update
-        </button>
+    {/* ⚠️ CORRECTION: Transformed the small warning button layout into an elegant inline action link */}
+{/* ⚠️ CORRECTION: Transformed the warning layout into a clean primary blue action link */}
+<span
+  className="text-primary fw-medium d-inline-flex align-items-center small"
+  style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+  onClick={() => onUpdateClick(enrollee)}
+  onMouseEnter={(e) => (e.currentTarget.style.color = "#0a58ca")} // Darker dashboard blue on hover
+  onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+>
+  <i className="bi bi-pencil-square me-1"></i> Update
+</span>
+
       </td>
     </tr>
   );

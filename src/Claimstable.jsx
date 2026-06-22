@@ -280,34 +280,51 @@ function formatMoney(value) {
             <td>{claim.date}</td>
             <td>{claim.authcode}</td>
             <td>{claim.provider}</td>
-            <td>{claim.diagnosis}</td>
+              
+              
+               <td 
+              style={{ 
+                minWidth: "150px", 
+                maxWidth: "200px", 
+                whiteSpace: "normal", 
+                wordBreak: "break-word" 
+              }}
+            >
+              {claim.diagnosis}
+            </td>
             <td>{formatNaira(claim.bill)}</td>
             <td>{formatNaira(claim.approved)}</td>
             <td>{formatNaira(claim.variance)}</td>
             <td>
             
-<ButtonGroup className="w-100">
-  <Button
-    variant="warning"
-    size="sm"
-    className="w-50"
+{/* ⚠️ CORRECTION: Removed the glued ButtonGroup and replaced it with a spaced, inline text-link row */}
+<div className="d-flex align-items-center gap-3">
+  
+  {/* Update Action Link */}
+  <span
+    className="text-primary fw-medium d-inline-flex align-items-center small"
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
     onClick={() => {
       setSelectedClaim(claim);       // store the claim to update
       setShowUpdateModal(true);      // open the Updateclaims modal
     }}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#0a58ca")} // Darker blue on hover
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
   >
-    Update
-  </Button>
-  <Button
-    variant="danger"
-    size="sm"
-    className="w-50"
-    onClick={() => handleDelete(claim.id)}
-    disabled
+    <i className="bi bi-pencil-square me-1"></i> Update
+  </span>
+
+  {/* Delete Action Link (Preserves your disabled logic visually) */}
+  <span
+    className="text-muted fw-medium d-inline-flex align-items-center small opacity-50"
+    style={{ cursor: "not-allowed" }}
+    /* onClick removed here because the link is disabled per your logic */
   >
-    Delete
-  </Button>
-</ButtonGroup>
+    <i className="bi bi-trash me-1"></i> Delete
+  </span>
+
+</div>
+
 
 {/* Update Modal Component */}
 <Updateclaims
