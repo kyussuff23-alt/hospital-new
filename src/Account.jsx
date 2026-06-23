@@ -455,21 +455,31 @@ if (existing) {
         })}
       </td>
       <td>
-        <button
-          className="btn btn-danger btn-sm me-2"
-          onClick={() => {
-            setSelectedPaymentId(p.id);
-            setShowDeleteModal(true);
-          }}
-        >
-          Delete
-        </button>
-        <button
-          className="btn btn-success btn-sm"
-          onClick={() => handleGenerateReceipt(p)}
-        >
-          Receipt
-        </button>
+       {/* ⚠️ CORRECTION: Transformed the small danger button layout into an elegant inline action link */}
+<span
+  className="text-danger fw-medium d-inline-flex align-items-center small me-3"
+  style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+  onClick={() => {
+    setSelectedPaymentId(p.id);
+    setShowDeleteModal(true);
+  }}
+  onMouseEnter={(e) => (e.currentTarget.style.color = "#a51d24")} // Professional deeper crimson on hover
+  onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+>
+  <i className="bi bi-trash me-1"></i> Delete
+</span>
+
+   {/* ⚠️ CORRECTION: Transformed the small success button into an elegant inline action link */}
+<span
+  className="text-success fw-medium d-inline-flex align-items-center small"
+  style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+  onClick={() => handleGenerateReceipt(p)}
+  onMouseEnter={(e) => (e.currentTarget.style.color = "#146c43")} // Professional deeper green on hover
+  onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+>
+  <i className="bi bi-file-earmark-text me-1"></i> Receipt
+</span>
+
       </td>
     </tr>
   ))}

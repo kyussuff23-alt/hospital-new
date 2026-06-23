@@ -1,4 +1,4 @@
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Provider from "./Provider";
 import Batch from "./Batch";
@@ -17,7 +17,6 @@ import Authorization from "./Authorization";
 import PendingAuth from "./PendingAuth";
 
 import { Bar } from "react-chartjs-2";
-
 
 import {
   Chart as ChartJS,
@@ -40,6 +39,8 @@ export default function Dashboard() {
 
   const [pendingCount, setPendingCount] = useState(0);
 
+  // ✅ Mobile state toggle tracking
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Extractclaims state lifted up
   const [hcpcode, setHcpcode] = useState("");
@@ -48,39 +49,36 @@ export default function Dashboard() {
   const [dateEnd, setDateEnd] = useState("");
   const [claims, setClaims] = useState([]);
 
- 
- useEffect(() => {
-  const fetchPending = async () => {
-    const { data, error } = await supabase
-      .from("authrequest")
-      .select("id")
-      .eq("status", "pending");
+  useEffect(() => {
+    const fetchPending = async () => {
+      const { data, error } = await supabase
+        .from("authrequest")
+        .select("id")
+        .eq("status", "pending");
 
-    if (!error && data) {
-      setPendingCount(data.length);
-    }
-  };
-
-  fetchPending();
-
-  const channel = supabase
-    .channel("authrequest-changes")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "authrequest" },
-      () => {
-        fetchPending(); // refresh count whenever table changes
+      if (!error && data) {
+        setPendingCount(data.length);
       }
-    )
-    .subscribe();
+    };
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, []);
+    fetchPending();
 
- 
- 
+    const channel = supabase
+      .channel("authrequest-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "authrequest" },
+        () => {
+          fetchPending();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     setIsAuthenticated(false);
@@ -94,21 +92,39 @@ export default function Dashboard() {
     datasets: [
       {
         label: "Claims Processed",
-        data: [30, 45, 60, 40], // ✅ Restored the array numbers here
+        data:[351,278,451,405], // ✅ Preserved your custom array values cleanly
         backgroundColor: "rgba(54, 162, 235, 0.6)",
       },
     ],
   };
-
-
-
    return (
     // Master Viewport Layout Wrapper
-    <div className="d-flex w-100 vh-100 overflow-hidden bg-light">
+    <div className="d-flex flex-column flex-lg-row w-100 vh-100 overflow-hidden bg-light position-relative">
       
-      {/* 1. LEFT SIDEBAR (Completely isolated scrolling) */}
+      {/* 📱 MOBILE TOP NAVIGATION ROW (Only visible on mobile screens via d-lg-none) */}
+      <div className="d-lg-none w-100 bg-dark text-white p-3 d-flex justify-content-between align-items-center flex-shrink-0" style={{ zIndex: 1010 }}>
+        <button
+          className="btn btn-outline-light btn-sm d-flex align-items-center gap-2"
+          type="button"
+          onClick={() => setIsMobileSidebarOpen(true)}
+        >
+          <i className="bi bi-list fs-5"></i> Menu
+        </button>
+        <h6 className="m-0 text-capitalize fw-bold">{activePage}</h6>
+      </div>
+
+      {/* 📱 MOBILE BACKGROUND BACKDROP */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 bg-dark opacity-50 d-lg-none" 
+          style={{ zIndex: 1040 }}
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* 1. LEFT SIDEBAR */}
       <div
-        className="bg-dark text-white d-flex flex-column justify-content-between p-3"
+        className={`bg-dark text-white d-flex flex-column justify-content-between p-3 offcanvas-lg offcanvas-start ${isMobileSidebarOpen ? 'show' : ''}`}
         style={{
           width: "220px",
           height: "100vh",
@@ -116,19 +132,29 @@ export default function Dashboard() {
           top: 0,
           left: 0,
           overflowY: "auto",
-          zIndex: 1000,
+          zIndex: 1050,
           flexShrink: 0
         }}
       >
         <div>
-          <div className="text-start mb-4">
-            <img
-              src={logo}
-              alt="NONSUCH Logo"
-              style={{ height: "40px", width: "120px" }}
-            />
-            <h6 className="mt-2">Nonsuch Portal</h6>
+          <div className="d-flex justify-content-between align-items-center text-start mb-4">
+            <div className="text-start">
+              <img
+                src={logo}
+                alt="NONSUCH Logo"
+                style={{ height: "40px", width: "120px" }}
+              />
+              <h6 className="mt-2 text-white">Nonsuch Portal</h6>
+            </div>
+            {/* Mobile Sidebar Close Button */}
+            <button 
+              type="button" 
+              className="btn-close btn-close-white d-lg-none" 
+              aria-label="Close"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            ></button>
           </div>
+          
           <ul className="nav flex-column">
             {[
               { key: "provider", icon: "bi-people-fill", label: "Provider" },
@@ -145,10 +171,17 @@ export default function Dashboard() {
               <li
                 key={item.key}
                 className="nav-item mb-2 p-2 rounded text-white"
-                style={{ cursor: "pointer", transition: "0.3s" }}
-                onClick={() => setActivePage(item.key)}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#0d6efd")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+                style={{ 
+                  cursor: "pointer", 
+                  transition: "0.3s",
+                  backgroundColor: activePage === item.key ? "#0d6efd" : "" 
+                }}
+                onClick={() => {
+                  setActivePage(item.key);
+                  setIsMobileSidebarOpen(false);
+                }}
+                onMouseEnter={(e) => activePage !== item.key && (e.currentTarget.style.backgroundColor = "#0d6efd")}
+                onMouseLeave={(e) => activePage !== item.key && (e.currentTarget.style.backgroundColor = "")}
               >
                 <i className={`${item.icon} me-2`}></i> {item.label}
               </li>
@@ -157,10 +190,17 @@ export default function Dashboard() {
             <li
               key="pendingauth"
               className="nav-item mb-2 p-2 rounded text-white"
-              style={{ cursor: "pointer", transition: "0.3s" }}
-              onClick={() => setActivePage("pendingauth")}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#0d6efd")}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+              style={{ 
+                cursor: "pointer", 
+                transition: "0.3s",
+                backgroundColor: activePage === "pendingauth" ? "#0d6efd" : ""
+              }}
+              onClick={() => {
+                setActivePage("pendingauth");
+                setIsMobileSidebarOpen(false);
+              }}
+              onMouseEnter={(e) => activePage !== "pendingauth" && (e.currentTarget.style.backgroundColor = "#0d6efd")}
+              onMouseLeave={(e) => activePage !== "pendingauth" && (e.currentTarget.style.backgroundColor = "")}
             >
               <i className="bi-check2-circle me-2"></i> PendingAuth
               {pendingCount > 0 && (
@@ -192,23 +232,26 @@ export default function Dashboard() {
       </div>
 
       {/* 2. RIGHT HAND PARENT LAYOUT PANEL */}
-           {/* 2. RIGHT HAND PARENT LAYOUT PANEL */}
-      {/* ⚠️ CORRECTION: Added minWidth: 0 to force this parent column box to stay bounded by the screen real estate */}
       <div 
         className="flex-grow-1 d-flex flex-column" 
-        style={{ marginLeft: "220px", height: "100vh", minWidth: 0 }}
+        style={{ 
+          marginLeft: window.innerWidth < 992 ? "0px" : "220px", 
+          height: window.innerWidth < 992 ? "calc(100vh - 58px)" : "100vh", 
+          minWidth: 0 
+        }}
       >
         
         {/* BOX A: STATIC HEADER AND ANALYTICS ZONE */}
-        <div className="p-4 bg-white border-bottom flex-shrink-0">
-          <div className="d-flex justify-content-between align-items-center mb-3">
+        {/* ⚠️ CORRECTION: Added Bootstrap's 'd-none d-lg-block' classes so the analytics section vanishes on phones but stays visible on desktop screen layouts */}
+        <div className="d-none d-lg-block p-4 bg-white border-bottom flex-shrink-0">
+          <div className="justify-content-between align-items-center mb-3">
             <h2 className="text-capitalize m-0 fw-bold text-dark">{activePage}</h2>
           </div>
 
           <div className="row g-3">
             <div className="col-md-4">
               <div className="card text-center shadow-sm h-100 border-0 bg-light">
-                <div className="card-body d-flex flex-column justify-content-center py-4">
+                <div className="card-body d-flex flex-column justify-content-center py-2">
                   <h6 className="text-muted mb-2">Analytics soon</h6>
                   <p className="display-5 text-primary m-0 fw-bold">0000</p>
                 </div>
@@ -216,7 +259,7 @@ export default function Dashboard() {
             </div>
             <div className="col-md-4">
               <div className="card text-center shadow-sm h-100 border-0 bg-light">
-                <div className="card-body d-flex flex-column justify-content-center py-4">
+                <div className="card-body d-flex flex-column justify-content-center py-2">
                   <h6 className="text-muted mb-2">Analytics soon</h6>
                   <p className="display-5 text-danger m-0 fw-bold">45</p>
                 </div>
@@ -224,9 +267,9 @@ export default function Dashboard() {
             </div>
             <div className="col-md-4">
               <div className="card shadow-sm h-100 border-0 bg-light">
-                <div className="card-body py-3">
+                <div className="card-body py-2">
                   <h6 className="text-muted mb-2">Analytics soon</h6>
-                  <div style={{ height: "130px", position: "relative" }}>
+                  <div style={{ height: "90px", position: "relative" }}>
                     <Bar
                       data={chartData}
                       options={{
@@ -242,18 +285,16 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* BOX B: DYNAMIC SUB-PAGE PANEL (The absolute scroll zone) */}
-        {/* 💡 By putting overflow: auto on this fully enclosed space, any wide table will scroll internally */}
+        {/* BOX B: DYNAMIC SUB-PAGE PANEL (Takes full screen space on mobile phones) */}
         <div 
-          className="flex-grow-1 p-4"
+          className="flex-grow-1 p-3 p-lg-4"
           style={{ 
             overflowY: "auto", 
             overflowX: "auto", 
             position: "relative"
           }}
         >
-          {/* Inner Safety Shield: Stops wide column pages from gathering or compacting words into rows */}
-          <div style={{ minWidth: "max-content", width: "100%" }}>
+          <div style={{ minWidth: "100%", width: "100%" }}>
             {activePage === "provider" && <Provider />}
             {activePage === "batch" && <Batch />}
             {activePage === "account" && <Account />}
