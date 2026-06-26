@@ -20,6 +20,9 @@ export default function Batch() {
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
+  const [success, setSuccess] = useState(null);
+
+
 
 
   function formatNaira(value) {
@@ -51,7 +54,111 @@ export default function Batch() {
     }
   }
 
-  function handleDownload() {
+  
+// ✅ Final Bulk upload handler with Error and Success states
+async function handleUploadBulk(event) {
+  const file = event.target.files[0]; // Safely grab the uploaded file object
+  if (!file) return;
+
+  // Clear previous alerts immediately upon a new upload
+  setError(null);
+  setSuccess(null);
+
+  try {
+    const text = await file.text();
+
+    // Split rows by newlines, filtering out completely empty rows
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+    if (lines.length < 2) {
+      setError("The CSV file is empty or missing data rows.");
+      return;
+    }
+
+    // Capture headers and convert to lowercase
+    const rawHeaders = lines[0].split(",").map((h) => h.replace(/^["']|["']$/g, "").trim().toLowerCase());
+
+    // Find the exact layout position index for each required database field
+    const idxHosp = rawHeaders.findIndex(h => h.includes("hosp"));
+    const idxMonth = rawHeaders.findIndex(h => h.includes("utilization") || h.includes("month") || h.includes("utilizationr"));
+    const idxYear = rawHeaders.findIndex(h => h.includes("year"));
+    const idxBill = rawHeaders.findIndex(h => h.includes("bill") || h.includes("amount"));
+    const idxClaims = rawHeaders.findIndex(h => h.includes("claim"));
+    const idxHcp = rawHeaders.findIndex(h => h.includes("hcp") || h.includes("code"));
+    const idxBatch = rawHeaders.findIndex(h => h.includes("batch"));
+
+    // Quick verification check to ensure required columns exist
+    if (idxHosp === -1 || idxMonth === -1 || idxYear === -1 || idxBill === -1 || idxClaims === -1 || idxHcp === -1 || idxBatch === -1) {
+      setError("Missing mapping headers. Ensure Hosp Name, Month, Year, Bill Amount, Claims Type, HCP Code, and Batch Number exist.");
+      return;
+    }
+
+    const jsonData = [];
+
+    // Parse each row starting from index 1
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      
+      const rowValues = [];
+      let insideQuotes = false;
+      let currentVal = "";
+
+      for (let charIdx = 0; charIdx < line.length; charIdx++) {
+        const char = line[charIdx];
+        if (char === '"') {
+          insideQuotes = !insideQuotes; 
+        } else if (char === ',' && !insideQuotes) {
+          rowValues.push(currentVal.trim());
+          currentVal = "";
+        } else {
+          currentVal += char;
+        }
+      }
+      rowValues.push(currentVal.trim());
+
+      // Extract and clean currency characters out of the target bill amount column
+      const rawBillStr = rowValues[idxBill] ? rowValues[idxBill].replace(/[^0-9.]/g, "") : "0";
+      const numericBill = Number(rawBillStr);
+
+      if (isNaN(numericBill) || rawBillStr === "") {
+        setError(`Row ${i + 1}: Bill amount must be a valid number. Found text string "${rowValues[idxBill]}" instead.`);
+        return;
+      }
+
+      // Build target row object aligning exactly with your Supabase column properties
+      jsonData.push({
+        hospname: rowValues[idxHosp] || null,
+        utilizationmonth: rowValues[idxMonth] || null,
+        year: rowValues[idxYear] || null,
+        billamount: numericBill,
+        claimstype: rowValues[idxClaims] || null,
+        hcpcode: rowValues[idxHcp] || null,
+        batchnumber: rowValues[idxBatch] || null
+      });
+    }
+
+    // Insert structured array into Supabase
+    const { error: supabaseError } = await supabase.from("mybatch").insert(jsonData);
+    if (supabaseError) {
+      console.error("Bulk upload error:", supabaseError.message);
+      setError(`Database Error: ${supabaseError.message}`);
+    } else {
+      // 💡 THE SUCCESS INTERACTION FIX
+      setError(null); 
+      setSuccess(`Success! ${jsonData.length} records parsed and uploaded smoothly.`);
+      fetchBatches();
+      
+      // Reset the file input field so the user can re-upload the same file if needed
+      event.target.value = "";
+    }
+  } catch (err) {
+    console.error("File processing error:", err);
+    setError("Failed to process CSV file.");
+  }
+}
+
+
+
+function handleDownload() {
     const worksheet = XLSX.utils.json_to_sheet(batches);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Batches");
@@ -113,7 +220,9 @@ const currentBatches = filteredBatches.slice(indexOfFirstRow, indexOfLastRow);
 
 
   return (
-    <div className="container mt-4">
+   
+   
+   <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
        {/* ⚠️ CORRECTION: Swapped buttons for clean, interactive dashboard action links */}
 <div className="d-flex align-items-center gap-4">
@@ -142,6 +251,30 @@ const currentBatches = filteredBatches.slice(indexOfFirstRow, indexOfLastRow);
     Download Excel
   </span>
 
+
+<div className="d-inline-block">
+  {/* Visible Clickable Upload Link/Trigger */}
+  <span 
+    className="text-warning fw-semibold d-inline-flex align-items-center" 
+    style={{ cursor: "pointer", transition: "color 0.2s ease" }}
+    onClick={() => document.getElementById("bulkUploadInput").click()}
+    onMouseEnter={(e) => (e.currentTarget.style.color = "#b58105")}
+    onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+  >
+    <i className="bi bi-upload me-2" style={{ fontSize: "1.1rem" }}></i> 
+    Upload Bulk
+  </span>
+
+  {/* Hidden Native File Input Handler */}
+  <input
+    type="file"
+    id="bulkUploadInput"
+    accept=".csv"
+    style={{ display: "none" }}
+    onChange={handleUploadBulk}
+  />
+</div>
+
 </div>
 
 
@@ -154,6 +287,24 @@ const currentBatches = filteredBatches.slice(indexOfFirstRow, indexOfLastRow);
         />
       </div>
 
+{success && (
+  <div className="alert alert-success alert-dismissible fade show mb-3 d-flex align-items-center justify-content-between" role="alert">
+    <div className="d-flex align-items-center">
+      <i className="bi bi-check-circle-fill me-2"></i> 
+      <span>{success}</span>
+    </div>
+    <button 
+      type="button" 
+      className="btn-close static-position" 
+      aria-label="Close"
+      onClick={() => setSuccess(null)}
+      style={{ position: 'relative', margin: 0, padding: '0.5rem' }}
+    ></button>
+  </div>
+)}
+
+    
+    
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="table-responsive">
