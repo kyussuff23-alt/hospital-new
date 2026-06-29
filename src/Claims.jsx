@@ -274,6 +274,11 @@ async function saveToClaims(values, mode = "insert") {
     setCurrentPage(0);
   }
 
+const handleClose = () => {
+  // Example: reset current form or navigate back
+  resetForm();   
+  // Or setActivePage("dashboard"); depending on your flow
+};
 
 
   return (
@@ -317,6 +322,8 @@ async function saveToClaims(values, mode = "insert") {
           Search
         </button>
       </div>
+
+
 
       {/* Prefilled form */}
    {currentForm && (
@@ -371,8 +378,17 @@ async function saveToClaims(values, mode = "insert") {
       </div>
 
       {/* Right column: editable vetting inputs */}
-      <div className="col-md-6">
-        <h5 className="mb-3 text-success">Vetting Inputs</h5>
+     <div className="col-md-6">
+  <div className="d-flex justify-content-between align-items-center mb-3">
+    <h5 className="text-success mb-0">Vetting Inputs</h5>
+    <button 
+      type="button" 
+      className="btn btn-sm btn-outline-danger"
+      onClick={handleClose} // define handleClose to reset or navigate back
+    >
+      ✕ Close
+    </button>
+  </div>
 
    {/* Frequency */}
       <div className="mb-3">
@@ -436,22 +452,24 @@ async function saveToClaims(values, mode = "insert") {
         />
       </div>
 
- <div className="mb-3">
+<div className="mb-3">
   <label className="form-label">Denial</label>
-  <select
-    className="form-select"
+  <input
+    list="denialOptions"
+    className="form-control"
     value={formValues[currentPage]?.denial || ""}
     onChange={(e) => updateField("denial", e.target.value)}
-     disabled={isFrozen} // ✅ freeze if vetted
-  >
-    <option value="">Select...</option>
-    <option value="not applicable">not applicable</option>
-    <option value="not covered">not covered</option>
-    <option value="no auth code">no auth code</option>
-    <option value="consumables">consumables</option>
-    <option value="others">others</option>
-  </select>
+    disabled={isFrozen} // ✅ freeze if vetted
+  />
+  <datalist id="denialOptions">
+    <option value="not applicable" />
+    <option value="not covered" />
+    <option value="no auth code" />
+    <option value="consumables" />
+    <option value="others" />
+  </datalist>
 </div>
+
        
 <div className="mb-3">
   <label className="form-label">Vett</label>
@@ -514,7 +532,7 @@ async function saveToClaims(values, mode = "insert") {
     <Modal.Title>Record Not Found</Modal.Title>
   </Modal.Header>
   <Modal.Body>
-    Error 452 : records not found.
+    Error 452 : claims not Authorized.
   </Modal.Body>
   <Modal.Footer>
     <Button variant="secondary" onClick={() => setShowNotFound(false)}>
@@ -550,7 +568,7 @@ async function saveToClaims(values, mode = "insert") {
           <Modal.Title>Success</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Claims saved successfully!
+          Success!
         </Modal.Body>
         <Modal.Footer>
           <Button variant="success" onClick={() => setShowSuccess(false)}>

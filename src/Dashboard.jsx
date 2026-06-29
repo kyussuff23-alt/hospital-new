@@ -34,7 +34,10 @@ export default function Dashboard() {
   const { user, userRole, setIsAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const [activePage, setActivePage] = useState("provider");
+ const [activePage, setActivePage] = useState(() => {
+  return localStorage.getItem("activePage") || "provider";
+});
+
   const [showMenu, setShowMenu] = useState(false);
 
   const [pendingCount, setPendingCount] = useState(0);
@@ -49,6 +52,13 @@ export default function Dashboard() {
   const [dateEnd, setDateEnd] = useState("");
   const [claims, setClaims] = useState([]);
 
+ 
+ useEffect(() => {
+  localStorage.setItem("activePage", activePage);
+}, [activePage]);
+
+ 
+ 
   useEffect(() => {
     const fetchPending = async () => {
       const { data, error } = await supabase
@@ -155,59 +165,81 @@ export default function Dashboard() {
             ></button>
           </div>
           
-          <ul className="nav flex-column">
-            {[
-              { key: "provider", icon: "bi-people-fill", label: "Provider" },
-              { key: "batch", icon: "bi-box-seam", label: "Batch" },
-              { key: "account", icon: "bi-person-circle", label: "Account" },
-              { key: "claims", icon: "bi-file-earmark-medical", label: "Claims" },
-              { key: "claimstable", icon: "bi-table", label: "Claimstable" },
-              { key: "extractclaims", icon: "bi-search", label: "Extract Claims" },
-              { key: "underwriting", icon: "bi-shield-check", label: "Underwriting" },
-              { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
-              { key: "enrolment", icon: "bi-pencil-square", label: "Enrolment" },
-              { key: "authorization", icon: "bi-check2-circle", label: "Authorization" },
-            ].map((item) => (
-              <li
-                key={item.key}
-                className="nav-item mb-2 p-2 rounded text-white"
-                style={{ 
-                  cursor: "pointer", 
-                  transition: "0.3s",
-                  backgroundColor: activePage === item.key ? "#0d6efd" : "" 
-                }}
-                onClick={() => {
-                  setActivePage(item.key);
-                  setIsMobileSidebarOpen(false);
-                }}
-                onMouseEnter={(e) => activePage !== item.key && (e.currentTarget.style.backgroundColor = "#0d6efd")}
-                onMouseLeave={(e) => activePage !== item.key && (e.currentTarget.style.backgroundColor = "")}
-              >
-                <i className={`${item.icon} me-2`}></i> {item.label}
-              </li>
-            ))}
-         
-            <li
-              key="pendingauth"
-              className="nav-item mb-2 p-2 rounded text-white"
-              style={{ 
-                cursor: "pointer", 
-                transition: "0.3s",
-                backgroundColor: activePage === "pendingauth" ? "#0d6efd" : ""
-              }}
-              onClick={() => {
-                setActivePage("pendingauth");
-                setIsMobileSidebarOpen(false);
-              }}
-              onMouseEnter={(e) => activePage !== "pendingauth" && (e.currentTarget.style.backgroundColor = "#0d6efd")}
-              onMouseLeave={(e) => activePage !== "pendingauth" && (e.currentTarget.style.backgroundColor = "")}
-            >
-              <i className="bi-check2-circle me-2"></i> PendingAuth
-              {pendingCount > 0 && (
-                <span className="badge bg-danger ms-2">{pendingCount}</span>
-              )}
-            </li>
-          </ul>
+         <ul className="nav flex-column">
+  {[
+    { key: "provider", icon: "bi-people-fill", label: "Provider" },
+    { key: "batch", icon: "bi-box-seam", label: "Batch" },
+    { key: "account", icon: "bi-person-circle", label: "Account" },
+    { key: "claims", icon: "bi-file-earmark-medical", label: "Claims" },
+    { key: "claimstable", icon: "bi-table", label: "Claimstable" },
+    { key: "extractclaims", icon: "bi-search", label: "Extract Claims" },
+    { key: "underwriting", icon: "bi-shield-check", label: "Underwriting" },
+    { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
+    { key: "enrolment", icon: "bi-pencil-square", label: "Enrolment" },
+    { key: "authorization", icon: "bi-check2-circle", label: "Authorization" },
+  ]
+    .filter(item => {
+      if (userRole === "callcentre") {
+        return ["provider","batch","account","authorization"].includes(item.key);
+      }
+      if (userRole === "admin") {
+        return true; // show all
+      }
+      if (userRole === "enrolment") {
+        return ["provider","batch","account","enrolment"].includes(item.key);
+      }
+      if (userRole === "account") {
+        return ["provider","batch","account"].includes(item.key);
+      }
+      if (userRole === "claims") {
+        return ["provider","batch","account","claimstable","extractclaims","claims"].includes(item.key);
+      }
+      return false;
+    })
+    .map((item) => (
+      <li
+        key={item.key}
+        className="nav-item mb-2 p-2 rounded text-white"
+        style={{ 
+          cursor: "pointer", 
+          transition: "0.3s",
+          backgroundColor: activePage === item.key ? "#0d6efd" : "" 
+        }}
+        onClick={() => {
+          setActivePage(item.key);
+          setIsMobileSidebarOpen(false);
+        }}
+        onMouseEnter={(e) => activePage !== item.key && (e.currentTarget.style.backgroundColor = "#0d6efd")}
+        onMouseLeave={(e) => activePage !== item.key && (e.currentTarget.style.backgroundColor = "")}
+      >
+        <i className={`${item.icon} me-2`}></i> {item.label}
+      </li>
+    ))}
+
+  {/* PendingAuth is always visible for callcentre and admin */}
+  {(userRole === "callcentre" || userRole === "admin") && (
+    <li
+      key="pendingauth"
+      className="nav-item mb-2 p-2 rounded text-white"
+      style={{ 
+        cursor: "pointer", 
+        transition: "0.3s",
+        backgroundColor: activePage === "pendingauth" ? "#0d6efd" : ""
+      }}
+      onClick={() => {
+        setActivePage("pendingauth");
+        setIsMobileSidebarOpen(false);
+      }}
+      onMouseEnter={(e) => activePage !== "pendingauth" && (e.currentTarget.style.backgroundColor = "#0d6efd")}
+      onMouseLeave={(e) => activePage !== "pendingauth" && (e.currentTarget.style.backgroundColor = "")}
+    >
+      <i className="bi-check2-circle me-2"></i> PendingAuth
+      {pendingCount > 0 && (
+        <span className="badge bg-danger ms-2">{pendingCount}</span>
+      )}
+    </li>
+  )}
+</ul>
         </div>
 
         {/* Profile at bottom of sidebar */}
@@ -294,36 +326,40 @@ export default function Dashboard() {
             position: "relative"
           }}
         >
-          <div style={{ minWidth: "100%", width: "100%" }}>
-            {activePage === "provider" && <Provider />}
-            {activePage === "batch" && <Batch />}
-            {activePage === "account" && <Account />}
-            {activePage === "claims" && <Claims />}
-            {activePage === "claimstable" && (
-              <div className="container-fluid p-0">
-                <Claimstable />
-              </div>
-            )}
-            {activePage === "extractclaims" && (
-              <Extractclaims
-                hcpcode={hcpcode}
-                setHcpcode={setHcpcode}
-                ticket={ticket}
-                setTicket={setTicket}
-                dateStart={dateStart}
-                setDateStart={setDateStart}
-                dateEnd={dateEnd}
-                setDateEnd={setDateEnd}
-                claims={claims}
-                setClaims={setClaims}
-              />
-            )}
-            {activePage === "underwriting" && <Utilization />}
-            {activePage === "groupEnrolment" && <GroupEnrolment />}
-            {activePage === "enrolment" && <Enrolment />}
-            {activePage === "authorization" && <Authorization />}
-            {activePage === "pendingauth" && <PendingAuth />}
-          </div>
+        <div style={{ minWidth: "100%", width: "100%" }}>
+  {activePage === "provider" && <Provider />}
+  {activePage === "batch" && <Batch />}
+  {activePage === "account" && <Account />}
+
+  {(userRole === "claims" || userRole === "admin") && activePage === "claims" && <Claims />}
+  {(userRole === "claims" || userRole === "admin") && activePage === "claimstable" && (
+    <div className="container-fluid p-0">
+      <Claimstable />
+    </div>
+  )}
+  {(userRole === "claims" || userRole === "admin") && activePage === "extractclaims" && (
+    <Extractclaims
+      hcpcode={hcpcode}
+      setHcpcode={setHcpcode}
+      ticket={ticket}
+      setTicket={setTicket}
+      dateStart={dateStart}
+      setDateStart={setDateStart}
+      dateEnd={dateEnd}
+      setDateEnd={setDateEnd}
+      claims={claims}
+      setClaims={setClaims}
+    />
+  )}
+
+  {activePage === "underwriting" && userRole === "admin" && <Utilization />}
+  {(userRole === "enrolment" || userRole === "admin") && activePage === "enrolment" && <Enrolment />}
+  {userRole === "admin" && activePage === "groupEnrolment" && <GroupEnrolment />}
+  {(userRole === "callcentre" || userRole === "admin") && activePage === "authorization" && <Authorization />}
+  {(userRole === "callcentre" || userRole === "admin") && activePage === "pendingauth" && <PendingAuth />}
+</div>
+
+
         </div>
 
       </div>
