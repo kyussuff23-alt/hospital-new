@@ -9,6 +9,8 @@ import Claimstable from "./Claimstable";
 import Extractclaims from "./Extractclaims";
 import Utilization from "./Utilization";
 import GroupEnrolment from "./GroupEnrolment";
+import HospitalClaims from "./HospitalClaims";
+
 import { supabase } from "./supabaseClient";
 import { AuthContext } from "./AuthContext";
 import UpdateGroup from "./UpdateGroup";
@@ -118,6 +120,8 @@ export default function App() {
           <Route path="/batch" element={<ProtectedRoute isAuthenticated={isAuthenticated} loading={loading}> <Batch /> </ProtectedRoute>} />
           <Route path="/claims" element={<ProtectedRoute isAuthenticated={isAuthenticated} loading={loading}> <Claims /> </ProtectedRoute>} />
           <Route path="/claimstable" element={<ProtectedRoute isAuthenticated={isAuthenticated} loading={loading}> <Claimstable /> </ProtectedRoute>} />
+          <Route path="/HospitalClaims" element={<ProtectedRoute isAuthenticated={isAuthenticated} loading={loading}> <HospitalClaims /> </ProtectedRoute>} />
+ 
           <Route path="/extractclaims" element={<ProtectedRoute isAuthenticated={isAuthenticated} loading={loading}> <Extractclaims /> </ProtectedRoute>} />
           <Route path="/account" element={<ProtectedRoute isAuthenticated={isAuthenticated} loading={loading}> <Account /> </ProtectedRoute>} />
           <Route path="/utilization" element={<ProtectedRoute isAuthenticated={isAuthenticated} loading={loading}> <Utilization /> </ProtectedRoute>} />

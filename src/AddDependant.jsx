@@ -116,7 +116,9 @@ async function validateDependantAge(dob) {
           const { data: hospData, error: hospError } = await supabase
             .from("myhospitals")
             .select("name")
-            .in("band", bands);
+            .in("band", bands)
+             .not("hcpcode", "ilike", "%/NHIA%"); // ❌ Sieve out all NHIA hospitals safely
+
 
           if (!hospError && hospData) {
             setHospitalOptions(hospData.map(h => h.name));

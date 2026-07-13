@@ -208,7 +208,9 @@ if (data?.bandallowed) {
   const { data: hospData, error: hospError } = await supabase
     .from("myhospitals")
     .select("name")
-    .in("band", bands);
+    .in("band", bands)
+      .not("hcpcode", "ilike", "%/NHIA%") // ❌ Drops all NHIA codes automatically
+     .limit(null); // ✅ removes the 1000 row cap
 
   if (!hospError && hospData) {
     setHospitalOptions(hospData.map(h => h.name));

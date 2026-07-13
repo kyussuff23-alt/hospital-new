@@ -14,7 +14,7 @@ export default function Register({ setIsAuthenticated, setUserRole }) {
 
     try {
       const result = await supabase.auth.signUp({ email, password });
-      console.log("SignUp result:", result);
+     // console.log("SignUp result:", result);
 
       if (result.error) {
         setError(result.error.message);

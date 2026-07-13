@@ -2,9 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Provider from "./Provider";
 import Batch from "./Batch";
+
+
 import Account from "./Account";
 import Claims from "./Claims";
 import Claimstable from "./Claimstable";
+import HospitalClaims from "./HospitalClaims";
 import Extractclaims from "./Extractclaims";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import logo from "./assets/nonsuch.jpg";
@@ -172,6 +175,8 @@ export default function Dashboard() {
     { key: "account", icon: "bi-person-circle", label: "Account" },
     { key: "claims", icon: "bi-file-earmark-medical", label: "Claims" },
     { key: "claimstable", icon: "bi-table", label: "Claimstable" },
+        { key: "hospitalclaims", icon: "bi-table", label: "HospitalClaims" },
+
     { key: "extractclaims", icon: "bi-search", label: "Extract Claims" },
     { key: "underwriting", icon: "bi-shield-check", label: "Underwriting" },
     { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
@@ -192,7 +197,7 @@ export default function Dashboard() {
         return ["provider","batch","account"].includes(item.key);
       }
       if (userRole === "claims") {
-        return ["provider","batch","account","claimstable","extractclaims","claims"].includes(item.key);
+        return ["provider","batch","account","claimstable","hospitalclaims","extractclaims","claims"].includes(item.key);
       }
       return false;
     })
@@ -337,6 +342,14 @@ export default function Dashboard() {
       <Claimstable />
     </div>
   )}
+
+    {(userRole === "claims" || userRole === "admin") && activePage === "hospitalclaims" && (
+    <div className="container-fluid p-0">
+      <HospitalClaims />
+    </div>
+  )}
+ 
+ 
   {(userRole === "claims" || userRole === "admin") && activePage === "extractclaims" && (
     <Extractclaims
       hcpcode={hcpcode}
