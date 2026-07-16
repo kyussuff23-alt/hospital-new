@@ -26,7 +26,7 @@ export default function Authorization( {
 
   
    const [modalOpen, setModalOpen] = useState(false);       // controls modal visibility for denial reason
-  const [activeDrugIndex, setActiveDrugIndex] = useState(null); 
+   const [activeDrugIndex, setActiveDrugIndex] = useState(null); 
  
  const [status, setStatus] = useState("approved"); // default
   
@@ -49,7 +49,7 @@ export default function Authorization( {
   const [selectedDrug, setSelectedDrug] = useState("");
 
 
-  const [selectedDrugs, setSelectedDrugs] = useState([]);// suposedly this for the new from hospital
+const [selectedDrugs, setSelectedDrugs] = useState([]);// suposedly this for the new from hospital
 const [drugsOptions, setDrugsOptions] = useState([]);
 
 const [authCode, setAuthCode] = useState("");
@@ -75,7 +75,6 @@ function resetAuthorizationForm() {
   setSelectedResult(null);
   setSelectedDiag("");
 }
-
 
 // Keep local state in sync if parent props change
 useEffect(() => {
@@ -193,9 +192,6 @@ const handleSubmitPassword = () => {
     setPassword("");
   }
 };
-
-
-
 
 
 const handleApprove = () => {
@@ -322,7 +318,8 @@ useEffect(() => {
   fetchServices();
 }, []);
 
-// Check coverage when service changes
+// CHECK COVERAGE WHENS SERVICE CHANGES  i can rewire here by changinf the table 
+//  know that it has to do with coverage status and handle approve and deny 
 
 useEffect(() => {
   const checkCoverage = async () => {
@@ -336,6 +333,7 @@ useEffect(() => {
 
     if (exists) {
 // ✅ FIX: Use the state value, or fall back to the prop value if state is empty
+//   
 const activeClient = selectedClient || client;
 const clientColumn = activeClient.toLowerCase(); 
 
@@ -384,9 +382,7 @@ useEffect(() => {
 }, []);
 
  
- 
- 
-  return (
+ return (
      
     <div className="card p-4 border-0 shadow-sm rounded-3 bg-white" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <div className="d-flex align-items-center gap-2 border-bottom pb-3 mb-4">
