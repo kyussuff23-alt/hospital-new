@@ -70,37 +70,119 @@ export default function Dashboard() {
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState("monthly");
 
   // Keep track of active window context layouts
-  useEffect(() => {
-    localStorage.setItem("activePage", activePage);
-  }, [activePage]);
-  // Pending Claims Realtime Channel Counter
-  useEffect(() => {
-    const fetchPending = async () => {
-      const { data, error } = await supabase
-        .from("authrequest")
-        .select("id")
-        .eq("status", "pending");
-      if (!error && data) {
-        setPendingCount(data.length);
+  // Keep track of active window context layouts 
+
+const enableHospitalAlerts = async () => {
+  // 1. Properly prompt the user for permission via a real click event
+  const permission = await Notification.requestPermission();
+  
+  if (permission === "granted") {
+    // 2. Play an empty text utterance to "unlock" the browser's audio engine
+    const unlockAudio = new SpeechSynthesisUtterance("");
+    window.speechSynthesis.speak(unlockAudio);
+    
+    alert("Alerts and voice notifications are now active!");
+  }
+};
+
+
+
+  useEffect(() => { 
+  localStorage.setItem("activePage", activePage); 
+}, [activePage]); 
+
+// ✅ Pending Claims Realtime Channel Counter with speech + notification 
+useEffect(() => { 
+  let lastCount = 0; // Tracks previous counts to prevent repeat spam
+
+  // ➕ Added speech function 
+  function speakMessage(message) { 
+    const utterance = new SpeechSynthesisUtterance(message); 
+    window.speechSynthesis.speak(utterance); 
+  } 
+
+  // ➕ Added notification function with envelope icon 
+  function showNotification(message) { 
+    if (Notification.permission === "granted") { 
+      new Notification("Hospital Alert", { 
+        body: message, 
+        icon: "/assets/envelope-icon.png" // ➕ small envelope icon 
+      }); 
+    } 
+  } 
+
+  // Optimized Fetch: Uses a HEAD request to download 0 row data, fetching only the count integer
+  const fetchPending = async () => { 
+    const { count, error } = await supabase 
+      .from("authrequest") 
+      .select("*", { count: "exact", head: true }) 
+      .eq("status", "pending"); 
+
+    if (!error && count !== null) { 
+      setPendingCount(count); 
+      
+      // Only alert if the count has actually increased
+      if (count > lastCount) {
+        const message = `There are ${count} requests pending. Please be fast.`; 
+        speakMessage(message); 
+        showNotification(message); 
       }
-    };
-    fetchPending();
+      
+      lastCount = count; 
+    } 
+  }; 
 
-    const channel = supabase
-      .channel("authrequest-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "authrequest" },
-        () => {
-          fetchPending();
+  fetchPending(); 
+
+  // Memory-optimized Realtime Listener: Computes updates directly from payload
+  const channel = supabase 
+    .channel("authrequest-changes") 
+    .on( 
+      "postgres_changes", 
+      { event: "*", schema: "public", table: "authrequest" }, 
+      (payload) => { 
+        let modifier = 0;
+
+        const isNewPending = payload.eventType === "INSERT" && payload.new.status === "pending";
+        const isDeletedPending = payload.eventType === "DELETE" && payload.old.status === "pending";
+        
+        if (isNewPending) {
+          modifier = 1;
+        } else if (isDeletedPending) {
+          modifier = -1;
+        } else if (payload.eventType === "UPDATE") {
+          const wasPending = payload.old?.status === "pending";
+          const isPending = payload.new?.status === "pending";
+
+          if (!wasPending && isPending) modifier = 1;  
+          if (wasPending && !isPending) modifier = -1; 
         }
-      )
-      .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+        // Exit immediately if the changes don't affect pending counts (prevents DB hammering)
+        if (modifier === 0) return;
+
+        // Perform atomic update using React functional state
+        setPendingCount((prevCount) => {
+          const newCount = prevCount + modifier;
+          
+          if (newCount > lastCount) {
+            const message = `There are ${newCount} requests pending. Please be fast.`;
+            speakMessage(message);
+            showNotification(message);
+          }
+
+          lastCount = newCount;
+          return newCount;
+        });
+      } 
+    ) 
+    .subscribe(); 
+
+  return () => { 
+    supabase.removeChannel(channel); 
+  }; 
+}, []);
+
 
   // Analytics Reducer Loop Pipeline (API -> Tally -> State)
 useEffect(() => {
@@ -263,6 +345,16 @@ useEffect(() => {
       >
         Monthly Overview
       </button>
+  <button 
+    type="button"
+    className="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm d-flex align-items-center gap-1"
+    onClick={enableHospitalAlerts}
+  >
+    <span>🔔</span> 
+    <span style={{ fontWeight: '500' }}>Enable Alerts</span>
+  </button>
+
+
     </div>
   </div>
 
