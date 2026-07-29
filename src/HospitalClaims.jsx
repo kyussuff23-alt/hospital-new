@@ -28,7 +28,7 @@ export default function HospitalClaims() {
     }).format(value);
   }
   
-  const itemsPerPage = 2;
+  const itemsPerPage = 10;
   // ✅ Client PDF Export
   const exportToPDF = () => {
     if (providerFilter === "All" || !providerFilter || !fromDate || !toDate) {

@@ -20,42 +20,43 @@ export default function Provider() {
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentHospitals = hospitals.slice(indexOfFirstRow, indexOfLastRow);
 
+  // this is where it begins 
   // Fetch hospitals by search (limited)
-  async function fetchHospitals(query) {
-    if (!query) {
-      setHospitals([]);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("myhospitals")
-      .select("id,hcpcode,name,acctno,acctname,phone,location,status,band,address,registerbank,contactperson,insurancetype")
-      .or(`name.ilike.%${query}%,hcpcode.ilike.%${query}%,location.ilike.%${query}%`)
-      .limit(50);
-
-    if (error) {
-      console.error(error);
-      setError(error.message);
-    } else {
-      setHospitals(data);
-    }
+  // Fetch hospitals based on search query via Edge Function
+async function fetchHospitals(query) {
+  if (!query) {
+    setHospitals([]);
+    return;
   }
 
-  // Fetch ALL hospitals for download
-  async function fetchAllHospitals() {
-    const { data, error } = await supabase
-      .from("myhospitals")
-      .select("*")
-      .order("id", { ascending: true });
+  const { data, error } = await supabase.functions.invoke('provider-search', {
+    body: { action: 'search', query: query }
+  });
 
-    if (error) {
-      console.error(error);
-      setError(error.message);
-      return [];
-    }
-    return data;
+  if (error) {
+    console.error(error);
+    setError(error.message);
+  } else {
+    setHospitals(data);
   }
+}
 
+// Fetch ALL hospitals for download via Edge Function
+async function fetchAllHospitals() {
+  const { data, error } = await supabase.functions.invoke('provider-search', {
+    body: { action: 'download_all' }
+  });
+
+  if (error) {
+    console.error(error);
+    setError(error.message);
+    return [];
+  }
+  
+  return data;
+}
+
+/// this is where it stops
   // ✅ Download hospitals to Excel
   async function handleDownload() {
     const allHospitals = await fetchAllHospitals();
@@ -384,3 +385,40 @@ export default function Provider() {
     </div>
   );
 }
+
+
+/* // Fetch hospitals by search (limited)
+  async function fetchHospitals(query) {
+    if (!query) {
+      setHospitals([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("myhospitals")
+      .select("id,hcpcode,name,acctno,acctname,phone,location,status,band,address,registerbank,contactperson,insurancetype")
+      .or(`name.ilike.%${query}%,hcpcode.ilike.%${query}%,location.ilike.%${query}%`)
+      .limit(50);
+
+    if (error) {
+      console.error(error);
+      setError(error.message);
+    } else {
+      setHospitals(data);
+    }
+  }
+
+  // Fetch ALL hospitals for download
+  async function fetchAllHospitals() {
+    const { data, error } = await supabase
+      .from("myhospitals")
+      .select("*")
+      .order("id", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      setError(error.message);
+      return [];
+    }
+    return data;
+  } */

@@ -128,7 +128,7 @@ useEffect(() => {
 
 
 
-
+// banding of hospitals 
   useEffect(() => {
   async function fetchDropdowns() {
     const { data, error } = await supabase
@@ -496,10 +496,7 @@ async function handleSave() {
   </select>
 </div>
 
-
-
-            {/* Plan */}
-           {/* Plan */}
+ {/* Plan */}
 <select
   className="form-select"
   value={form.plan}

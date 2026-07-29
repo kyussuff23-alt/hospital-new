@@ -119,8 +119,8 @@ const handleSaveAuthorization = async (code) => {
 
 // this is for form coming from updatrrequest 
 const handleSendAuthorization = async () => {
-  // Step 1: update the parent authrequest
-  const { error: authError } = await supabase
+  // Step 1: update the parent authrequest with Concurrency Guard
+  const { data: updatedData, error: authError } = await supabase
     .from("authrequest")
     .update({
       status,             // "approved" or "denied"
@@ -128,30 +128,37 @@ const handleSendAuthorization = async () => {
       authcode: authCode,
       updated_at: new Date(),
     })
-    .eq("id", initialId);
+    .eq("id", initialId)
+    .eq("status", "pending") // 🚀 THE SHIELD: Only touch it if nobody else has processed it!
+    .select();
 
-  if (authError) {
-    console.error("Error updating authrequest:", authError.message);
-    return;
+  // ✅ CRITICAL PRODUCTION UPDATE: Catch the database constraint failure immediately
+  if (authError || !updatedData || updatedData.length === 0) {
+    console.error("Conflict Blocked or DB Error:", authError?.message);
+    
+    // Alert your officer cleanly so they know what happened
+    alert("⚠️ Conflict Blocked! This request has already been processed by another officer.");
+    
+    onDone(); // Closes the authorization panel and automatically refreshes the pending table list!
+    return;   // 🚀 STOPS THE CODE HERE: Prevents the drug loop from running and ruining child items!
   }
 
-  // Step 2: update each child drugsrequest row
+  // Step 2: update each child drugsrequest row (Only runs if Step 1 succeeded perfectly)
   for (const drug of localDrugs) {
-  const { error: drugError } = await supabase
-    .from("drugsrequest")
-    .update({
-      qty: Number(drug.qty) || 0,
-      period: Number(drug.period) || 0,
-      total: Number(drug.total) || 0,
-      denialreason: drug.denialreason || null, // match DB column name
-    })
-    .eq("id", drug.id); // id is unique, no need for authrequest_id filter
+    const { error: drugError } = await supabase
+      .from("drugsrequest")
+      .update({
+        qty: Number(drug.qty) || 0,
+        period: Number(drug.period) || 0,
+        total: Number(drug.total) || 0,
+        denialreason: drug.denialreason || null, 
+      })
+      .eq("id", drug.id); 
 
-  if (drugError) {
-    console.error(`Error updating drug ${drug.id}:`, drugError.message);
+    if (drugError) {
+      console.error(`Error updating drug ${drug.id}:`, drugError.message);
+    }
   }
-}
-
 
   // Step 3: success flow
   setShowSuccessModall(true);
@@ -160,6 +167,7 @@ const handleSendAuthorization = async () => {
   setStatus("approved");
   onDone();
 };
+
 
 
 

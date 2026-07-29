@@ -103,55 +103,55 @@ export default function Dashboard() {
   }, []);
 
   // Analytics Reducer Loop Pipeline (API -> Tally -> State)
-  useEffect(() => {
-    const loadDashboardAnalytics = async () => {
-      const { data, error } = await supabase
-        .from("dashboard_analytics_base")
-        .select("*");
-        
-      if (error) {
-        console.error("Analytics View Fetch Error:", error.message);
-        return;
-      }
-      
-      if (data && data.length > 0) {
-        const todayStr = new Date().toISOString().split("T")[0];
-        const currentMonthLabel = new Date().toLocaleString("en-US", { month: "short" });
+useEffect(() => {
+  const loadDashboardAnalytics = async () => {
+    // ✅ SECURE CONCEALMENT: Call the database function via RPC instead of exposing the view name
+    const { data, error } = await supabase.rpc("get_executive_analytics");
 
-        const analyticsSummary = data.reduce((acc, row) => {
-          const isToday = row.daily_date === todayStr;
-          const isThisMonth = row.monthly_label === currentMonthLabel;
-          const isProcessed = row.status === "approved" || row.status === "processed";
+    if (error) {
+      console.error("Analytics View Fetch Error:", error.message);
+      return;
+    }
 
-          if (isToday) acc.dailyRequests += 1;
-          if (isThisMonth) acc.monthlyRequests += 1;
-          if (isToday && isProcessed) acc.dailyProcessed += 1;
-          if (isThisMonth && isProcessed) acc.monthlyProcessed += 1;
-          if (isToday && isProcessed) acc.dailyCost += Number(row.request_total_cost || 0);
-          if (isThisMonth && isProcessed) acc.monthlyCost += Number(row.request_total_cost || 0);
+    if (data && data.length > 0) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const currentMonthLabel = new Date().toLocaleString("en-US", { month: "short" });
 
-          const hospital = row.hospname || "Unknown Hospital";
-          acc.hospitalVolume[hospital] = (acc.hospitalVolume[hospital] || 0) + 1;
-          return acc;
-        }, { dailyRequests: 0, monthlyRequests: 0, dailyProcessed: 0, monthlyProcessed: 0, dailyCost: 0, monthlyCost: 0, hospitalVolume: {} });
+      const analyticsSummary = data.reduce((acc, row) => {
+        const isToday = row.daily_date === todayStr;
+        const isThisMonth = row.monthly_label === currentMonthLabel;
+        const isProcessed = row.status === "approved" || row.status === "processed";
 
-        const sortedHospitals = Object.keys(analyticsSummary.hospitalVolume)
-          .sort((a, b) => analyticsSummary.hospitalVolume[b] - analyticsSummary.hospitalVolume[a])
-          .slice(0, 5);
-        const matchingVolumes = sortedHospitals.map(h => analyticsSummary.hospitalVolume[h]);
+        if (isToday) acc.dailyRequests += 1;
+        if (isThisMonth) acc.monthlyRequests += 1;
+        if (isToday && isProcessed) acc.dailyProcessed += 1;
+        if (isThisMonth && isProcessed) acc.monthlyProcessed += 1;
+        if (isToday && isProcessed) acc.dailyCost += Number(row.request_total_cost || 0);
+        if (isThisMonth && isProcessed) acc.monthlyCost += Number(row.request_total_cost || 0);
 
-        setDailyRequestsCount(analyticsSummary.dailyRequests);
-        setMonthlyRequestsCount(analyticsSummary.monthlyRequests);
-        setDailyProcessedCount(analyticsSummary.dailyProcessed);
-        setMonthlyProcessedCount(analyticsSummary.monthlyProcessed);
-        setDailyCostTotal(analyticsSummary.dailyCost);
-        setMonthlyCostTotal(analyticsSummary.monthlyCost);
-        setHospChartLabels(sortedHospitals);
-        setHospChartValues(matchingVolumes);
-      }
-    };
-    loadDashboardAnalytics();
-  }, []);
+        const hospital = row.hospname || "Unknown Hospital";
+        acc.hospitalVolume[hospital] = (acc.hospitalVolume[hospital] || 0) + 1;
+        return acc;
+      }, { dailyRequests: 0, monthlyRequests: 0, dailyProcessed: 0, monthlyProcessed: 0, dailyCost: 0, monthlyCost: 0, hospitalVolume: {} });
+
+      const sortedHospitals = Object.keys(analyticsSummary.hospitalVolume)
+        .sort((a, b) => analyticsSummary.hospitalVolume[b] - analyticsSummary.hospitalVolume[a])
+        .slice(0, 5);
+      const matchingVolumes = sortedHospitals.map(h => analyticsSummary.hospitalVolume[h]);
+
+      setDailyRequestsCount(analyticsSummary.dailyRequests);
+      setMonthlyRequestsCount(analyticsSummary.monthlyRequests);
+      setDailyProcessedCount(analyticsSummary.dailyProcessed);
+      setMonthlyProcessedCount(analyticsSummary.monthlyProcessed);
+      setDailyCostTotal(analyticsSummary.dailyCost);
+      setMonthlyCostTotal(analyticsSummary.monthlyCost);
+      setHospChartLabels(sortedHospitals);
+      setHospChartValues(matchingVolumes);
+    }
+  };
+
+  loadDashboardAnalytics();
+}, []);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -235,7 +235,6 @@ export default function Dashboard() {
       {/* 2. RIGHT HAND PARENT LAYOUT PANEL */}
       <div className="flex-grow-1 d-flex flex-column" style={{ marginLeft: window.innerWidth < 992 ? "0px" : "220px", height: window.innerWidth < 992 ? "calc(100vh - 58px)" : "100vh", minWidth: 0 }}>
         
-        {/* BOX A: DESKTOP STATIC HEADER AND BEAUTIFIED ANALYTICS ZONE */}
        {/* BOX A: DESKTOP STATIC HEADER AND BEAUTIFIED ANALYTICS ZONE */}
 <div className="d-none d-lg-block p-4 bg-white border-bottom flex-shrink-0">
   <div className="d-flex justify-content-between align-items-center mb-3">

@@ -7,7 +7,7 @@ export default function UpdateRequest() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRequest, setSelectedRequest] = useState(null);
 
-  const rowsPerPage = 5;
+  const rowsPerPage = 10;
 
   const fetchRequests = async () => {
     const { data, error } = await supabase
