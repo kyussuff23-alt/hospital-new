@@ -16,6 +16,10 @@ import GroupEnrolment from "./GroupEnrolment";
 import Enrolment from "./Enrolment";
 import Authorization from "./Authorization";
 import PendingAuth from "./PendingAuth";
+import NHIA from "./NHIA";
+import AdminPanel from "./AdminPanel";
+
+
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -36,7 +40,7 @@ export default function Dashboard() {
   
   // Navigation active layout tracker tracking parameters
   const [activePage, setActivePage] = useState(() => {
-    return localStorage.getItem("activePage") || "provider";
+    return localStorage.getItem("activePage") || "nhia";
   });
   const [showMenu, setShowMenu] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -172,6 +176,7 @@ useEffect(() => {
           }
 
           lastCount = newCount;
+          
           return newCount;
         });
       } 
@@ -282,6 +287,9 @@ useEffect(() => {
               { key: "groupEnrolment", icon: "bi-people", label: "Group Enrolment" },
               { key: "enrolment", icon: "bi-pencil-square", label: "Enrolment" },
               { key: "authorization", icon: "bi-check2-circle", label: "Authorization" },
+              { key: "adminpanel", icon: "bi-check2-circle", label: "AdminPanel" },
+
+
             ]
             .filter(item => {
               if (userRole === "callcentre") return ["provider","batch","account","authorization"].includes(item.key);
@@ -301,7 +309,21 @@ useEffect(() => {
               <li key="pendingauth" className="nav-item mb-2 p-2 rounded text-white" style={{ cursor: "pointer", transition: "0.3s", backgroundColor: activePage === "pendingauth" ? "#0d6efd" : "" }} onClick={() => { setActivePage("pendingauth"); setIsMobileSidebarOpen(false); }} onMouseEnter={(e) => activePage !== "pendingauth" && (e.currentTarget.style.backgroundColor = "#0d6efd")} onMouseLeave={(e) => activePage !== "pendingauth" && (e.currentTarget.style.backgroundColor = "")}>
                 <i className="bi-check2-circle me-2"></i> PendingAuth {pendingCount > 0 && <span className="badge bg-danger ms-2">{pendingCount}</span>}
               </li>
+              
             )}
+         
+              {(userRole === "callcentre" || userRole === "admin" || userRole === "claims") && (
+              <li key="nhia" className="nav-item mb-2 p-2 rounded text-white" style={{ cursor: "pointer", transition: "0.3s", backgroundColor: activePage === "nhia" ? "#0d6efd" : "" }} onClick={() => { setActivePage("nhia"); setIsMobileSidebarOpen(false); }} onMouseEnter={(e) => activePage !== "nhia" && (e.currentTarget.style.backgroundColor = "#0d6efd")} onMouseLeave={(e) => activePage !== "nhia" && (e.currentTarget.style.backgroundColor = "")}>
+             <i className="bi-check2-circle me-2"></i>NHIA
+             
+              </li>
+              
+            )}
+
+
+          
+          
+         
           </ul>
         </div>
         
@@ -492,6 +514,10 @@ useEffect(() => {
             {(userRole === "callcentre" || userRole === "admin") && activePage === "authorization" && <Authorization />}
             
             {(userRole === "callcentre" || userRole === "admin") && activePage === "pendingauth" && <PendingAuth />}
+            {(userRole === "callcentre" || userRole === "admin" || userRole === "claims" ) && activePage === "nhia" && <NHIA />}
+            {(userRole === "admin") && activePage === "adminpanel" && <AdminPanel />}
+
+
             
           </div>
         </div>

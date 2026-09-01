@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import Adjudicate from "./Adjudicate";
-import { Table, Button, Modal, DropdownButton, Dropdown, Form, Pagination } from "react-bootstrap";
+import { Table, Button, Modal, DropdownButton, Dropdown, Form, Pagination, Spinner } from "react-bootstrap";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -9,7 +9,9 @@ import logopay from "./logopay.jpeg"; // ✅ import your logo
 
 export default function HospitalClaims() {
   const [claims, setClaims] = useState([]);
+  const [totalCount, setTotalCount] = useState(0); 
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(""); 
   const [currentPage, setCurrentPage] = useState(1);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -19,26 +21,123 @@ export default function HospitalClaims() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [downloadType, setDownloadType] = useState(null);
   const [statusFilter, setStatusFilter] = useState("approved");
+  const [providers, setProviders] = useState([]); 
+  const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const itemsPerPage = 10;
+  const startIndex = (currentPage - 1) * itemsPerPage;
 
   // Utility: format numbers as Nigerian Naira currency
   function formatMoney(value) {
     if (!value || isNaN(value)) return "₦0";
-    return "₦" + new Intl.NumberFormat("en-NG", {
-      minimumFractionDigits: 0,
-    }).format(value);
+    return "₦" + new Intl.NumberFormat("en-NG", { minimumFractionDigits: 0 }).format(value);
   }
-  
-  const itemsPerPage = 10;
-  // ✅ Client PDF Export
-  const exportToPDF = () => {
+
+  const formatNaira = (value) => {
+    if (!value) return "";
+    return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(value);
+  };
+  // 1. Debounce Search input to prevent rapid server calls on every single keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1); 
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // 2. Build unique lookup array for healthcare facility filter dropdown
+  useEffect(() => {
+    async function fetchProvidersList() {
+      const { data, error } = await supabase.from("authrequest").select("hospname");
+      if (!error && data) {
+        const unique = [...new Set(data.map((c) => c.hospname))].filter(Boolean);
+        setProviders(unique);
+      }
+    }
+    fetchProvidersList();
+  }, []);
+
+  // 3. Central Reactive Data Engine Hook
+  useEffect(() => {
+    fetchClaims();
+  }, [currentPage, debouncedSearch, statusFilter, fromDate, toDate, providerFilter]);
+
+  async function fetchClaims(status = statusFilter) {
+    setIsLoading(true);
+    const fromOffset = (currentPage - 1) * itemsPerPage;
+    const toOffset = fromOffset + itemsPerPage - 1;
+
+    let query = supabase
+      .from("authrequest")
+      .select(`
+        id, enrolleename, policyid, client, diagnosis, treatment, status, hcpcode, hospname, authcode, reason, created_at, clientname, gender, plan, phonenumber,
+        drugsrequest ( id, itemname, price, qty, period, total, denialreason, created_at )
+      `, { count: "exact" })
+      .eq("status", status)
+      .range(fromOffset, toOffset)
+      .order("created_at", { ascending: false });
+
+    if (debouncedSearch) {
+      query = query.or(`hcpcode.ilike.%${debouncedSearch}%,hospname.ilike.%${debouncedSearch}%,enrolleename.ilike.%${debouncedSearch}%`);
+    }
+    if (providerFilter) {
+      query = query.eq("hospname", providerFilter);
+    }
+    if (fromDate) {
+      query = query.gte("created_at", `${fromDate}T00:00:00Z`);
+    }
+    if (toDate) {
+      query = query.lte("created_at", `${toDate}T23:59:59Z`);
+    }
+
+    const { data, count, error } = await query;
+    if (error) {
+      console.error("Error fetching hospital claims:", error.message);
+    } else {
+      setClaims(data || []);
+      setTotalCount(count || 0);
+    }
+    setIsLoading(false);
+  }
+
+  // 4. Background Data Fetcher for Reports Export (Downloads entire query cross-pages)
+  async function fetchAllMatchingClaimsForExport() {
+    let query = supabase
+      .from("authrequest")
+      .select(`
+        id, enrolleename, policyid, client, diagnosis, treatment, status, hcpcode, hospname, authcode, reason, created_at, clientname, gender, plan, phonenumber,
+        drugsrequest ( id, itemname, price, qty, period, total, denialreason, created_at )
+      `)
+      .eq("status", statusFilter);
+
+    if (debouncedSearch) {
+      query = query.or(`hcpcode.ilike.%${debouncedSearch}%,hospname.ilike.%${debouncedSearch}%,enrolleename.ilike.%${debouncedSearch}%`);
+    }
+    if (providerFilter) query = query.eq("hospname", providerFilter);
+    if (fromDate) query = query.gte("created_at", `${fromDate}T00:00:00Z`);
+    if (toDate) query = query.lte("created_at", `${toDate}T23:59:59Z`);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Export Fetch Error:", error.message);
+      return [];
+    }
+    return data || [];
+  }
+
+  const exportToPDF = async () => {
     if (providerFilter === "All" || !providerFilter || !fromDate || !toDate) {
       alert("Client Payment Advice requires a named provider and a date range.");
       return;
     }
-
-    const dataToExport = filteredClaims;
+    
+    setIsExporting(true);
+    const dataToExport = await fetchAllMatchingClaimsForExport();
     if (!dataToExport || dataToExport.length === 0) {
       alert("No claims found for the selected filters.");
+      setIsExporting(false);
       return;
     }
 
@@ -52,7 +151,7 @@ export default function HospitalClaims() {
 
     const tableData = [];
     dataToExport.forEach((claim) => {
-      claim.drugsrequest.forEach((drug) => {
+      claim.drugsrequest?.forEach((drug) => {
         tableData.push([
           new Date(claim.created_at).toISOString().split("T")[0],
           claim.hospname,
@@ -62,19 +161,10 @@ export default function HospitalClaims() {
       });
     });
 
-    autoTable(doc, {
-      head: [["Date", "Hospital", "HCP Code", "Total"]],
-      body: tableData,
-      startY: 50,
-    });
+    autoTable(doc, { head: [["Date", "Hospital", "HCP Code", "Total"]], body: tableData, startY: 50 });
 
     const totalAmount = dataToExport.reduce(
-      (sum, claim) =>
-        sum +
-        claim.drugsrequest.reduce(
-          (drugSum, drug) => drugSum + (Number(drug.total) || 0),
-          0
-        ),
+      (sum, claim) => sum + (claim.drugsrequest?.reduce((drugSum, drug) => drugSum + (Number(drug.total) || 0), 0) || 0),
       0
     );
 
@@ -84,82 +174,20 @@ export default function HospitalClaims() {
     doc.setFontSize(10);
     doc.text("Kindly contact your claims officer for further advice 08078392043.", 14, finalY + 30);
     doc.save("hospital_claims.pdf");
+    setIsExporting(false);
   };
-  useEffect(() => {
-    fetchClaims();
-  }, []);
 
-  async function fetchClaims(status = statusFilter) {
-    const { data, error } = await supabase
-      .from("authrequest")
-      .select(`
-        id,
-        enrolleename,
-        policyid,
-        client,
-        diagnosis,
-        treatment,
-        status,
-        hcpcode,
-        hospname,
-        authcode,
-        reason,
-        created_at,
-        clientname,
-        gender,
-        plan,
-        phonenumber,
-        drugsrequest (
-          id,
-          itemname,
-          price,
-          qty,
-          period,
-          total,
-          denialreason,
-          created_at
-        )
-      `)
-      .eq("status", status)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching hospital claims:", error.message);
-    } else {
-      setClaims(data);
-    }
-  }
-
-  const providers = [...new Set(claims.map((c) => c.hospname))];
-
-  const filteredClaims = claims.filter((claim) => {
-    const matchesSearch =
-      claim.hcpcode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      claim.hospname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      claim.enrolleename?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesProvider = !providerFilter || claim.hospname === providerFilter;
-
-    const matchesDate =
-      (!fromDate || new Date(claim.created_at) >= new Date(fromDate)) &&
-      (!toDate || new Date(claim.created_at) <= new Date(toDate));
-
-    return matchesSearch && matchesProvider && matchesDate;
-  });
-
-  const totalPages = Math.ceil(filteredClaims.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentClaims = filteredClaims.slice(startIndex, startIndex + itemsPerPage);
-
-  const exportToExcel = () => {
-    const dataToExport = filteredClaims.length > 0 ? filteredClaims : claims;
+  const exportToExcel = async () => {
+    setIsExporting(true);
+    const dataToExport = await fetchAllMatchingClaimsForExport();
     if (!dataToExport || dataToExport.length === 0) {
       alert("No claims found for the selected filters.");
+      setIsExporting(false);
       return;
     }
 
     const flattened = dataToExport.flatMap((claim) =>
-      claim.drugsrequest.map((drug) => ({
+      claim.drugsrequest?.map((drug) => ({
         id: claim.id,
         enrolleename: claim.enrolleename,
         policyid: claim.policyid,
@@ -181,23 +209,17 @@ export default function HospitalClaims() {
         total: drug.total,
         denialreason: drug.denialreason,
         drug_created_at: drug.created_at,
-      }))
+      })) || []
     );
 
     const worksheet = XLSX.utils.json_to_sheet(flattened);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "HospitalClaims");
     XLSX.writeFile(workbook, "hospital_claims.xlsx");
+    setIsExporting(false);
   };
 
-  const formatNaira = (value) => {
-    if (!value) return "";
-    return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
   return (
     <div className="container-fluid py-4 bg-light min-vh-100">
       <div className="card border-0 shadow-sm p-4 mb-4 rounded-3 bg-white">
@@ -207,54 +229,45 @@ export default function HospitalClaims() {
             <p className="text-muted small mb-0">Adjudicate medical bills at encounter package level</p>
           </div>
           <div className="col-12 col-md-4 ms-auto">
-            <Form.Control
-              type="text"
-              placeholder="🔍 Search Patient name, HCP code, Hospital..."
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="border-2 shadow-none py-2 px-3 rounded-2"
+            <Form.Control 
+              type="text" 
+              placeholder="🔍 Search Patient name, HCP code, Hospital..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              className="border-2 shadow-none py-2 px-3 rounded-2" 
             />
           </div>
         </div>
-
         <div className="row g-3 align-items-center">
           <div className="col-12 col-md-3">
             <Form.Label className="small fw-semibold text-secondary">Queue Status Filter</Form.Label>
-            <Form.Select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-                fetchClaims(e.target.value);
-              }}
+            <Form.Select 
+              value={statusFilter} 
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }} 
               className="py-2 border-light-subtle shadow-none rounded-2 bg-light fw-medium text-dark"
             >
-            <option value="approved">🔵 Approved Claims</option>
-
+              <option value="approved">🔵 Approved Claims</option>
               <option value="processed">🔵 Processed Claims</option>
               <option value="recalled">🟡 Recalled Claims</option>
             </Form.Select>
           </div>
-
           <div className="col-6 col-md-2">
             <Form.Label className="small fw-semibold text-secondary">From Date</Form.Label>
-            <Form.Control type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="py-2 border-light-subtle shadow-none rounded-2" />
+            <Form.Control type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setCurrentPage(1); }} className="py-2 border-light-subtle shadow-none rounded-2" />
           </div>
           <div className="col-6 col-md-2">
             <Form.Label className="small fw-semibold text-secondary">To Date</Form.Label>
-            <Form.Control type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="py-2 border-light-subtle shadow-none rounded-2" />
+            <Form.Control type="date" value={toDate} onChange={(e) => { setToDate(e.target.value); setCurrentPage(1); }} className="py-2 border-light-subtle shadow-none rounded-2" />
           </div>
-
           <div className="col-12 col-md-3">
             <Form.Label className="small fw-semibold text-secondary">Healthcare Providers</Form.Label>
-            <Form.Select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value)} className="py-2 border-light-subtle shadow-none rounded-2">
+            <Form.Select value={providerFilter} onChange={(e) => { setProviderFilter(e.target.value); setCurrentPage(1); }} className="py-2 border-light-subtle shadow-none rounded-2">
               <option value="">All Providers</option>
               {providers.map((p) => (<option key={p} value={p}>{p}</option>))}
             </Form.Select>
           </div>
-
           <div className="col-12 col-md-2 d-flex flex-column align-self-end">
-            <DropdownButton id="paymentAdviceDropdown" title="📥 Export Advice" variant="dark" className="w-100">
+            <DropdownButton id="paymentAdviceDropdown" title={isExporting ? "⏳ Building..." : "📥 Export Advice"} disabled={isExporting} variant="dark" className="w-100">
               <Dropdown.Item onClick={() => { setDownloadType("internal"); setShowConfirmModal(true); }}>Microsoft Excel Summary (.xlsx)</Dropdown.Item>
               <Dropdown.Item onClick={() => { setDownloadType("client"); setShowConfirmModal(true); }}>HMO Client Advice PDF (.pdf)</Dropdown.Item>
             </DropdownButton>
@@ -274,50 +287,75 @@ export default function HospitalClaims() {
           <Button variant="primary" className="fw-semibold px-4" onClick={() => { setShowConfirmModal(false); if (downloadType === "internal") { exportToExcel(); } else { exportToPDF(); } }}>Confirm</Button>
         </Modal.Footer>
       </Modal>
-
       <div className="card border-0 shadow-sm rounded-3 overflow-hidden bg-white">
         <div className="table-responsive">
-          <Table hover className="align-middle mb-0 unbordered-table"> 
-            <thead className="table-dark text-uppercase small tracking-wider"> 
-              <tr> 
-                <th className="py-3 px-4">S/N</th> 
-                <th className="py-3">Claim ID</th> 
-                <th className="py-3">Enrollee Name</th> 
-                <th className="py-3">Date</th> 
-                <th className="py-3">HCP Facility Provider</th> 
-                <th className="py-3">Diagnosis</th> 
-                <th className="py-3 text-center">Lines</th> 
-                <th className="py-3 text-end pe-4">Grand Total Sum</th> 
-                <th className="py-3 text-center" style={{ minWidth: "150px" }}>Actions</th> 
-              </tr> 
-            </thead> 
+          <Table hover className="align-middle mb-0 unbordered-table">
+            <thead className="table-dark text-uppercase small tracking-wider">
+              <tr>
+                <th className="py-3 px-4">S/N</th>
+                <th className="py-3">Claim ID</th>
+                <th className="py-3">Enrollee Name</th>
+                <th className="py-3">Date</th>
+                <th className="py-3">HCP Facility Provider</th>
+                <th className="py-3">Diagnosis</th>
+                <th className="py-3 text-center">Lines</th>
+                <th className="py-3 text-end pe-4">Grand Total Sum</th>
+                <th className="py-3 text-center" style={{ minWidth: "150px" }}>Actions</th>
+              </tr>
+            </thead>
             <tbody>
-              {currentClaims.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan="9" className="text-center py-5 bg-white">
+                    <Spinner animation="border" variant="primary" size="sm" className="me-2" />
+                    <span className="text-muted fw-medium">Loading claims index data...</span>
+                  </td>
+                </tr>
+              ) : claims.length === 0 ? (
                 <tr><td colSpan="9" className="text-center text-muted py-5 fw-medium bg-white">No active encounter claims match your search criteria.</td></tr>
               ) : (
-                currentClaims.map((claim, index) => {
+                claims.map((claim, index) => {
                   const claimGrandTotal = claim.drugsrequest?.reduce((sum, drug) => sum + (Number(drug.total) || 0), 0) || 0;
                   const itemLinesCount = claim.drugsrequest?.length || 0;
                   return (
-                    <tr key={claim.id} className="border-bottom border-light-subtle"> 
-                      <td className="px-4 text-secondary small fw-bold">{startIndex + index + 1}</td> 
-                      <td className="fw-semibold text-primary">#{claim.id}</td> 
+                    <tr key={claim.id} className="border-bottom border-light-subtle">
+                      <td className="px-4 text-secondary small fw-bold">{startIndex + index + 1}</td>
+                      <td className="fw-semibold text-primary">#{claim.id}</td>
                       <td className="fw-medium text-dark">{claim.enrolleename || "N/A"}</td>
-                      <td className="small text-secondary">{new Date(claim.created_at).toISOString().split("T")[0]}</td> 
-                      <td className="text-secondary small fw-medium">{claim.hospname}</td> 
-                      <td style={{ minWidth: "160px", maxWidth: "220px", whiteSpace: "normal", wordBreak: "break-word" }} className="small text-dark">{claim.diagnosis}</td> 
-                      <td className="text-center"><span className="badge bg-light text-dark border px-2 py-1 rounded small font-monospace fw-bold">{itemLinesCount}</span></td> 
-                      <td className="text-end pe-4 fw-bold text-dark font-monospace">{formatMoney(claimGrandTotal)}</td> 
-                      <td className="text-center"> 
-                        <Button variant="outline-primary" size="sm" className="fw-bold px-3 py-1.5 rounded-2 d-inline-flex align-items-center small shadow-sm" onClick={() => { setSelectedClaim(claim); setShowUpdateModal(true); }}>
-                          <i className="bi bi-shield-check me-1.5 fs-6"></i> Adjudicate All
-                        </Button> 
-                      </td> 
+                      <td className="small text-secondary">{new Date(claim.created_at).toISOString().split("T")[0]}</td>
+                      <td className="text-secondary small fw-medium">{claim.hospname}</td>
+                      <td style={{ minWidth: "160px", maxWidth: "220px", whiteSpace: "normal", wordBreak: "break-word" }} className="small text-dark">{claim.diagnosis}</td>
+                      <td className="text-center"><span className="badge bg-light text-dark border px-2 py-1 rounded small font-monospace fw-bold">{itemLinesCount}</span></td>
+                      <td className="text-end pe-4 fw-bold text-dark font-monospace">{formatMoney(claimGrandTotal)}</td>
+<td className="text-center">
+  {claim.status === "processed" ? (
+    <Button
+      variant="danger"
+      size="sm"
+      className="fw-bold px-3 py-1.5 rounded-2 d-inline-flex align-items-center small shadow-sm"
+      disabled
+    >
+      <i className="bi bi-shield-fill-x me-1.5 fs-6"></i> Adjudicated
+    </Button>
+  ) : (
+    <Button
+      variant="outline-primary"
+      size="sm"
+      className="fw-bold px-3 py-1.5 rounded-2 d-inline-flex align-items-center small shadow-sm"
+      onClick={() => {
+        setSelectedClaim(claim);
+        setShowUpdateModal(true);
+      }}
+    >
+      <i className="bi bi-shield-check me-1.5 fs-6"></i> Adjudicate All
+    </Button>
+  )}
+</td>
                     </tr>
                   );
                 })
               )}
-            </tbody> 
+            </tbody>
           </Table>
         </div>
         {totalPages > 1 && (
@@ -334,7 +372,7 @@ export default function HospitalClaims() {
         )}
       </div>
       {selectedClaim && (
-        <Adjudicate claim={selectedClaim} show={showUpdateModal} onHide={() => { setShowUpdateModal(false); setSelectedClaim(null); }} onSuccess={fetchClaims} />
+        <Adjudicate claim={selectedClaim} show={showUpdateModal} onHide={() => { setShowUpdateModal(false); setSelectedClaim(null); }} onSuccess={() => fetchClaims(statusFilter)} />
       )}
     </div>
   );
