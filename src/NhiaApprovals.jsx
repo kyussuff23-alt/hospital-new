@@ -44,7 +44,7 @@ function ApprovedClaimsLedger() {
 
       const { data: records, error: fetchError, count } = await supabase
         .from("nhia_claims_biodata")
-        .select("id,created_at, refid, authcode, enrolleename, nhianumber, hospitalname", { count: "exact" })
+        .select("id,created_at, refid,gender,callupnumber,statecode,batch,stream,phonenumber,hcpcode,diagnosis, authcode, enrolleename, nhianumber, hospitalname", { count: "exact" })
         .eq("status", "approved")
         .order("created_at", { ascending: false })
         .range(fromOffset, toOffset);
