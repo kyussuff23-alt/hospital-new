@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import Adjudicate from "./Adjudicate";
+import Policy from "./Policy";
+import Authdisplay from "./Authdisplay";
 import { Table, Button, Modal, DropdownButton, Dropdown, Form, Pagination, Spinner } from "react-bootstrap";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import logopay from "./logopay.jpeg"; // ✅ import your logo
+import logopay from "./logopay.jpeg";
 
 export default function HospitalClaims() {
   const [claims, setClaims] = useState([]);
@@ -25,20 +27,31 @@ export default function HospitalClaims() {
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
+  // New states for Policy and Authdisplay modals
+  const [selectedPolicyClaim, setSelectedPolicyClaim] = useState(null);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  
+  const [selectedAuthClaim, setSelectedAuthClaim] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
   const itemsPerPage = 10;
   const startIndex = (currentPage - 1) * itemsPerPage;
 
-  // Utility: format numbers as Nigerian Naira currency
   function formatMoney(value) {
     if (!value || isNaN(value)) return "₦0";
     return "₦" + new Intl.NumberFormat("en-NG", { minimumFractionDigits: 0 }).format(value);
   }
 
-  const formatNaira = (value) => {
-    if (!value) return "";
-    return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(value);
-  };
-  // 1. Debounce Search input to prevent rapid server calls on every single keystroke
+  // Helper validation logic to enforce 30/31 days maximum range constraint
+  function isValidDateRange(start, end) {
+    if (!start || !end) return true;
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const diffTime = Math.abs(endDate - startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 31;
+  }
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
@@ -47,7 +60,6 @@ export default function HospitalClaims() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // 2. Build unique lookup array for healthcare facility filter dropdown
   useEffect(() => {
     async function fetchProvidersList() {
       const { data, error } = await supabase.from("authrequest").select("hospname");
@@ -59,8 +71,24 @@ export default function HospitalClaims() {
     fetchProvidersList();
   }, []);
 
-  // 3. Central Reactive Data Engine Hook
   useEffect(() => {
+    // 1. Guard Condition: Block fetch if primary filters are unselected
+    if (!providerFilter || providerFilter === "All" || !fromDate || !toDate) {
+      setClaims([]);
+      setTotalCount(0);
+      return;
+    }
+
+    // 2. Guard Condition: Block fetch if date range violates performance bounds (> 31 days)
+    if (!isValidDateRange(fromDate, toDate)) {
+      alert("Please select a maximum date range of 31 days to maintain system performance.");
+      setFromDate("");
+      setToDate("");
+      setClaims([]);
+      setTotalCount(0);
+      return;
+    }
+
     fetchClaims();
   }, [currentPage, debouncedSearch, statusFilter, fromDate, toDate, providerFilter]);
 
@@ -102,7 +130,6 @@ export default function HospitalClaims() {
     setIsLoading(false);
   }
 
-  // 4. Background Data Fetcher for Reports Export (Downloads entire query cross-pages)
   async function fetchAllMatchingClaimsForExport() {
     let query = supabase
       .from("authrequest")
@@ -220,11 +247,13 @@ export default function HospitalClaims() {
   };
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
+
   return (
     <div className="container-fluid py-4 bg-light min-vh-100">
+      {/* Top Filter & Header Card */}
       <div className="card border-0 shadow-sm p-4 mb-4 rounded-3 bg-white">
         <div className="row g-3 align-items-center mb-3">
-          <div className="col-12 col-md-4">
+          <div className="col-12 col-md-5">
             <h4 className="fw-bold text-dark mb-0">Claims Management</h4>
             <p className="text-muted small mb-0">Adjudicate medical bills at encounter package level</p>
           </div>
@@ -234,13 +263,15 @@ export default function HospitalClaims() {
               placeholder="🔍 Search Patient name, HCP code, Hospital..." 
               value={searchTerm} 
               onChange={(e) => setSearchTerm(e.target.value)} 
-              className="border-2 shadow-none py-2 px-3 rounded-2" 
+              className="border shadow-none py-2 px-3 rounded-2" 
             />
           </div>
         </div>
-        <div className="row g-3 align-items-center">
+
+        {/* Filters Grid */}
+        <div className="row g-3 align-items-end">
           <div className="col-12 col-md-3">
-            <Form.Label className="small fw-semibold text-secondary">Queue Status Filter</Form.Label>
+            <Form.Label className="small fw-semibold text-secondary mb-1">Queue Status Filter</Form.Label>
             <Form.Select 
               value={statusFilter} 
               onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }} 
@@ -252,55 +283,93 @@ export default function HospitalClaims() {
             </Form.Select>
           </div>
           <div className="col-6 col-md-2">
-            <Form.Label className="small fw-semibold text-secondary">From Date</Form.Label>
-            <Form.Control type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setCurrentPage(1); }} className="py-2 border-light-subtle shadow-none rounded-2" />
+            <Form.Label className="small fw-semibold text-secondary mb-1">From Date</Form.Label>
+            <Form.Control 
+              type="date" 
+              value={fromDate} 
+              onChange={(e) => { setFromDate(e.target.value); setCurrentPage(1); }} 
+              className="py-2 border-light-subtle shadow-none rounded-2" 
+            />
           </div>
           <div className="col-6 col-md-2">
-            <Form.Label className="small fw-semibold text-secondary">To Date</Form.Label>
-            <Form.Control type="date" value={toDate} onChange={(e) => { setToDate(e.target.value); setCurrentPage(1); }} className="py-2 border-light-subtle shadow-none rounded-2" />
+            <Form.Label className="small fw-semibold text-secondary mb-1">To Date</Form.Label>
+            <Form.Control 
+              type="date" 
+              value={toDate} 
+              onChange={(e) => { setToDate(e.target.value); setCurrentPage(1); }} 
+              className="py-2 border-light-subtle shadow-none rounded-2" 
+            />
           </div>
           <div className="col-12 col-md-3">
-            <Form.Label className="small fw-semibold text-secondary">Healthcare Providers</Form.Label>
-            <Form.Select value={providerFilter} onChange={(e) => { setProviderFilter(e.target.value); setCurrentPage(1); }} className="py-2 border-light-subtle shadow-none rounded-2">
+            <Form.Label className="small fw-semibold text-secondary mb-1">Healthcare Providers</Form.Label>
+            <Form.Select 
+              value={providerFilter} 
+              onChange={(e) => { setProviderFilter(e.target.value); setCurrentPage(1); }} 
+              className="py-2 border-light-subtle shadow-none rounded-2"
+            >
               <option value="">All Providers</option>
               {providers.map((p) => (<option key={p} value={p}>{p}</option>))}
             </Form.Select>
           </div>
-          <div className="col-12 col-md-2 d-flex flex-column align-self-end">
-            <DropdownButton id="paymentAdviceDropdown" title={isExporting ? "⏳ Building..." : "📥 Export Advice"} disabled={isExporting} variant="dark" className="w-100">
-              <Dropdown.Item onClick={() => { setDownloadType("internal"); setShowConfirmModal(true); }}>Microsoft Excel Summary (.xlsx)</Dropdown.Item>
-              <Dropdown.Item onClick={() => { setDownloadType("client"); setShowConfirmModal(true); }}>HMO Client Advice PDF (.pdf)</Dropdown.Item>
+          <div className="col-12 col-md-2">
+            <DropdownButton 
+              id="paymentAdviceDropdown" 
+              title={isExporting ? "⏳ Building..." : "📥 Export Advice"} 
+              disabled={isExporting} 
+              variant="dark" 
+              className="w-100"
+            >
+              <Dropdown.Item onClick={() => { setDownloadType("internal"); setShowConfirmModal(true); }}>
+                Microsoft Excel Summary (.xlsx)
+              </Dropdown.Item>
+              <Dropdown.Item onClick={() => { setDownloadType("client"); setShowConfirmModal(true); }}>
+                HMO Client Advice PDF (.pdf)
+              </Dropdown.Item>
             </DropdownButton>
           </div>
         </div>
       </div>
 
+      {/* Confirmation Modal */}
       <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
         <Modal.Header closeButton className="border-0 pb-0">
           <Modal.Title className="fw-bold fs-5">Confirm Document Generation</Modal.Title>
         </Modal.Header>
         <Modal.Body className="py-3 text-secondary">
-          {downloadType === "internal" ? "Are you sure you want to download Payment Advice (Excel)?" : "Are you sure you want to generate a client Payment Advice (PDF)?"}
+          {downloadType === "internal" 
+            ? "Are you sure you want to download Payment Advice (Excel)?" 
+            : "Are you sure you want to generate a client Payment Advice (PDF)?"}
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0">
           <Button variant="light" className="fw-semibold px-4" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
-          <Button variant="primary" className="fw-semibold px-4" onClick={() => { setShowConfirmModal(false); if (downloadType === "internal") { exportToExcel(); } else { exportToPDF(); } }}>Confirm</Button>
+          <Button 
+            variant="primary" 
+            className="fw-semibold px-4" 
+            onClick={() => { 
+              setShowConfirmModal(false); 
+              if (downloadType === "internal") { exportToExcel(); } else { exportToPDF(); } 
+            }}
+          >
+            Confirm
+          </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Main Claims Table Card */}
       <div className="card border-0 shadow-sm rounded-3 overflow-hidden bg-white">
         <div className="table-responsive">
           <Table hover className="align-middle mb-0 unbordered-table">
             <thead className="table-dark text-uppercase small tracking-wider">
               <tr>
-                <th className="py-3 px-4">S/N</th>
-                <th className="py-3">Claim ID</th>
-                <th className="py-3">Enrollee Name</th>
-                <th className="py-3">Date</th>
-                <th className="py-3">HCP Facility Provider</th>
-                <th className="py-3">Diagnosis</th>
-                <th className="py-3 text-center">Lines</th>
-                <th className="py-3 text-end pe-4">Grand Total Sum</th>
-                <th className="py-3 text-center" style={{ minWidth: "150px" }}>Actions</th>
+                <th className="py-3 px-3 text-nowrap" style={{ width: "50px" }}>S/N</th>
+                <th className="py-3 text-nowrap" style={{ minWidth: "120px" }}>Policy ID</th>
+                <th className="py-3 text-nowrap" style={{ minWidth: "120px" }}>Auth Code</th>
+                <th className="py-3 text-nowrap" style={{ minWidth: "160px" }}>Enrollee Name</th>
+                <th className="py-3 text-nowrap" style={{ minWidth: "100px" }}>Date</th>
+                <th className="py-3 text-nowrap" style={{ minWidth: "180px" }}>HCP Facility Provider</th>
+                <th className="py-3 text-nowrap" style={{ minWidth: "180px" }}>Diagnosis</th>
+                <th className="py-3 text-end pe-4 text-nowrap" style={{ minWidth: "140px" }}>Grand Total Sum</th>
+                <th className="py-3 text-center text-nowrap" style={{ minWidth: "150px" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -312,45 +381,108 @@ export default function HospitalClaims() {
                   </td>
                 </tr>
               ) : claims.length === 0 ? (
-                <tr><td colSpan="9" className="text-center text-muted py-5 fw-medium bg-white">No active encounter claims match your search criteria.</td></tr>
+                <tr>
+                  <td colSpan="9" className="text-center text-muted py-5 fw-medium bg-white">
+                    No active encounter claims match your search criteria.
+                  </td>
+                </tr>
               ) : (
                 claims.map((claim, index) => {
                   const claimGrandTotal = claim.drugsrequest?.reduce((sum, drug) => sum + (Number(drug.total) || 0), 0) || 0;
-                  const itemLinesCount = claim.drugsrequest?.length || 0;
+
                   return (
                     <tr key={claim.id} className="border-bottom border-light-subtle">
-                      <td className="px-4 text-secondary small fw-bold">{startIndex + index + 1}</td>
-                      <td className="fw-semibold text-primary">#{claim.id}</td>
-                      <td className="fw-medium text-dark">{claim.enrolleename || "N/A"}</td>
-                      <td className="small text-secondary">{new Date(claim.created_at).toISOString().split("T")[0]}</td>
-                      <td className="text-secondary small fw-medium">{claim.hospname}</td>
-                      <td style={{ minWidth: "160px", maxWidth: "220px", whiteSpace: "normal", wordBreak: "break-word" }} className="small text-dark">{claim.diagnosis}</td>
-                      <td className="text-center"><span className="badge bg-light text-dark border px-2 py-1 rounded small font-monospace fw-bold">{itemLinesCount}</span></td>
-                      <td className="text-end pe-4 fw-bold text-dark font-monospace">{formatMoney(claimGrandTotal)}</td>
-<td className="text-center">
-  {claim.status === "processed" ? (
-    <Button
-      variant="danger"
-      size="sm"
-      className="fw-bold px-3 py-1.5 rounded-2 d-inline-flex align-items-center small shadow-sm"
-      disabled
-    >
-      <i className="bi bi-shield-fill-x me-1.5 fs-6"></i> Adjudicated
-    </Button>
-  ) : (
-    <Button
-      variant="outline-primary"
-      size="sm"
-      className="fw-bold px-3 py-1.5 rounded-2 d-inline-flex align-items-center small shadow-sm"
-      onClick={() => {
-        setSelectedClaim(claim);
-        setShowUpdateModal(true);
-      }}
-    >
-      <i className="bi bi-shield-check me-1.5 fs-6"></i> Adjudicate All
-    </Button>
-  )}
-</td>
+                      {/* S/N */}
+                      <td className="px-3 text-secondary small fw-bold text-nowrap">
+                        {startIndex + index + 1}
+                      </td>
+
+                      {/* Policy ID (Clickable Link) */}
+                      <td className="fw-semibold text-nowrap small font-monospace">
+                        {claim.policyid ? (
+                          <button
+                            type="button"
+                            className="btn btn-link p-0 fw-semibold text-decoration-none text-primary small font-monospace"
+                            onClick={() => {
+                              setSelectedPolicyClaim(claim);
+                              setShowPolicyModal(true);
+                            }}
+                          >
+                            {claim.policyid}
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+
+                      {/* Auth Code (Clickable Link) */}
+                      <td className="fw-semibold text-nowrap small font-monospace">
+                        {claim.authcode ? (
+                          <button
+                            type="button"
+                            className="btn btn-link p-0 fw-semibold text-decoration-none text-dark small font-monospace"
+                            onClick={() => {
+                              setSelectedAuthClaim(claim);
+                              setShowAuthModal(true);
+                            }}
+                          >
+                            {claim.authcode}
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+
+                      {/* Enrollee Name */}
+                      <td className="fw-medium text-dark text-break" style={{ minWidth: "150px", maxWidth: "200px" }}>
+                        {claim.enrolleename || "N/A"}
+                      </td>
+
+                      {/* Date */}
+                      <td className="small text-secondary text-nowrap">
+                        {claim.created_at ? new Date(claim.created_at).toISOString().split("T")[0] : "—"}
+                      </td>
+
+                      {/* HCP Facility Provider */}
+                      <td className="text-secondary small fw-medium text-break" style={{ minWidth: "180px", maxWidth: "220px", whiteSpace: "normal" }}>
+                        {claim.hospname || "—"}
+                      </td>
+
+                      {/* Diagnosis */}
+                      <td className="small text-dark text-break" style={{ minWidth: "180px", maxWidth: "240px", whiteSpace: "normal" }}>
+                        {claim.diagnosis || "—"}
+                      </td>
+
+                      {/* Grand Total Sum */}
+                      <td className="text-end pe-4 fw-bold text-dark font-monospace text-nowrap">
+                        {formatMoney(claimGrandTotal)}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="text-center text-nowrap">
+                        {claim.status === "processed" ? (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            className="fw-bold px-3 py-1.5 rounded-2 d-inline-flex align-items-center small shadow-sm text-nowrap"
+                            disabled
+                          >
+                            <i className="bi bi-shield-fill-x me-1.5 fs-6"></i> Adjudicated
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            className="fw-bold px-3 py-1.5 rounded-2 d-inline-flex align-items-center small shadow-sm text-nowrap"
+                            onClick={() => {
+                              setSelectedClaim(claim);
+                              setShowUpdateModal(true);
+                            }}
+                          >
+                            <i className="bi bi-shield-check me-1.5 fs-6"></i> Adjudicate All
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })
@@ -358,21 +490,54 @@ export default function HospitalClaims() {
             </tbody>
           </Table>
         </div>
+
+        {/* Pagination Footer */}
         {totalPages > 1 && (
-          <div className="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <span className="text-muted small">Showing page <b>{currentPage}</b> of {totalPages} pages</span>
+          <div className="card-footer bg-white border-0 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span className="text-muted small">
+              Showing page <b>{currentPage}</b> of <b>{totalPages}</b> pages ({totalCount} total items)
+            </span>
             <Pagination className="mb-0 gap-1">
               <Pagination.Prev disabled={currentPage === 1} onClick={() => setCurrentPage((prev) => prev - 1)} />
               {[...Array(totalPages)].map((_, i) => (
-                <Pagination.Item key={i + 1} active={i + 1 === currentPage} onClick={() => setCurrentPage(i + 1)}>{i + 1}</Pagination.Item>
+                <Pagination.Item key={i + 1} active={i + 1 === currentPage} onClick={() => setCurrentPage(i + 1)}>
+                  {i + 1}
+                </Pagination.Item>
               ))}
               <Pagination.Next disabled={currentPage === totalPages} onClick={() => setCurrentPage((prev) => prev + 1)} />
             </Pagination>
           </div>
         )}
       </div>
+
+      {/* Adjudicate Modal */}
       {selectedClaim && (
-        <Adjudicate claim={selectedClaim} show={showUpdateModal} onHide={() => { setShowUpdateModal(false); setSelectedClaim(null); }} onSuccess={() => fetchClaims(statusFilter)} />
+        <Adjudicate 
+          claim={selectedClaim} 
+          show={showUpdateModal} 
+          onHide={() => { setShowUpdateModal(false); setSelectedClaim(null); }} 
+          onSuccess={() => fetchClaims(statusFilter)} 
+        />
+      )}
+
+      {/* Policy Modal Component */}
+      {selectedPolicyClaim && (
+        <Policy 
+          claim={selectedPolicyClaim} 
+          policyId={selectedPolicyClaim.policyid}
+          show={showPolicyModal} 
+          onHide={() => { setShowPolicyModal(false); setSelectedPolicyClaim(null); }} 
+        />
+      )}
+
+      {/* Authdisplay Modal Component */}
+      {selectedAuthClaim && (
+        <Authdisplay 
+          claim={selectedAuthClaim} 
+          authCode={selectedAuthClaim.authcode}
+          show={showAuthModal} 
+          onHide={() => { setShowAuthModal(false); setSelectedAuthClaim(null); }} 
+        />
       )}
     </div>
   );

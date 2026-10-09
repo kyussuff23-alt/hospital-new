@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 //import './Table.css';
+import { Form, InputGroup, Button } from "react-bootstrap";
+import Policy from "./Policy";
 
 
 export default function Authorization( {
@@ -23,6 +25,19 @@ export default function Authorization( {
  const [reason, setReason] = useState("");
  // const [authycode, setAuthycode] = useState("");
  const [deniedAll, setDeniedAll] = useState(false);
+
+ // Seearching policyid 
+ const [searchPolicyId, setSearchPolicyId] = useState("");
+const [selectedPolicyClaim, setSelectedPolicyClaim] = useState(null);
+const [showPolicyModal, setShowPolicyModal] = useState(false);
+
+ const [maxOriginalId, setMaxOriginalId] = useState(0);
+
+
+  // 🔽 PASTE THESE THREE CLEAN LINES RIGHT HERE 🔽
+  const [showDigitalPasswordModal, setShowDigitalPasswordModal] = useState(false);
+  const [digitalPassword, setDigitalPassword] = useState("");
+  const [digitalUnauthorized, setDigitalUnauthorized] = useState(false);
 
   
    const [modalOpen, setModalOpen] = useState(false);       // controls modal visibility for denial reason
@@ -77,11 +92,38 @@ function resetAuthorizationForm() {
 }
 
 // Keep local state in sync if parent props change
+// Keep local state in sync and lock the highest original item ID
+// 🟢 NEW APPEND ENGINE WIRE: Pre-fills existing AuthCode from parent table on mount
 useEffect(() => {
-  if (drugsrequest) {
-    setLocalDrugs(drugsrequest);
-  }
-}, [drugsrequest]);
+  const checkExistingAuthCode = async () => {
+    if (!initialId) return;
+
+    // Fetch parent authrequest row info directly from Supabase
+    const { data, error } = await supabase
+      .from("authrequest")
+      .select("authcode")
+      .eq("id", initialId)
+      .maybeSingle();
+
+    if (!error && data?.authcode) {
+      // 1. Paste it inside the button and lock it
+      setAuthCode(data.authcode);
+
+      // 2. Lock the max ID from the initial approved batch
+      if (drugsrequest && drugsrequest.length > 0) {
+        const ids = drugsrequest.map(d => Number(d.id)).filter(id => !isNaN(id));
+        if (ids.length > 0) {
+          setMaxOriginalId(Math.max(...ids));
+        }
+      }
+    }
+  };
+
+  checkExistingAuthCode();
+}, [initialId, drugsrequest]);
+
+
+
 
 const handleSaveAuthorization = async (code) => {
   setSaving(true);
@@ -184,16 +226,42 @@ const handleGenerateAuthClick = () => {
   setShowPasswordInput(true); // show password input box
 };
 
+
+const handleDigitalPasswordSubmit = (e) => {
+  e.preventDefault();
+  
+  if (passwordMap[digitalPassword]) {
+    const randomSix = Math.floor(100000 + Math.random() * 900000);
+    const generatedCode = `51/PHIS/${randomSix}/${passwordMap[digitalPassword]}`;
+    
+    // Write it directly inside the state variable bound to the button view
+    setAuthCode(generatedCode);
+    setShowDigitalPasswordModal(false);
+    setDigitalPassword("");
+    setDigitalUnauthorized(false);
+  } else {
+    setDigitalUnauthorized(true);
+    setDigitalPassword("");
+  }
+};
+
+
+
+
 const handleSubmitPassword = () => {
   if (passwordMap[password]) {
     const randomSix = Math.floor(100000 + Math.random() * 900000);
     const generatedCode = `51/PHIS/${randomSix}/${passwordMap[password]}`;
+    
+    // 🟢 Seed the generated token back into the visual field container state
     setAuthCode(generatedCode);
     setShowPasswordInput(false);
     setPassword("");
 
-    // ✅ Save immediately with the fresh code
-    handleSaveAuthorization(generatedCode);
+    // 🟢 IF NOT A DIGITAL PORTAL REQUEST, EXECUTE THE MANUAL ROW SAVING ARCHIVE SCRIPT
+    if (!enrolleeId) {
+      handleSaveAuthorization(generatedCode);
+    }
   } else {
     setShowUnauthorizedModal(true);
     setShowPasswordInput(false);
@@ -392,12 +460,46 @@ useEffect(() => {
  
  return (
      
-    <div className="card p-4 border-0 shadow-sm rounded-3 bg-white" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+   
+   
+   <div className="card p-4 border-0 shadow-sm rounded-3 bg-white" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <div className="d-flex align-items-center gap-2 border-bottom pb-3 mb-4">
         <i className="bi bi-shield-lock-fill text-primary fs-4"></i>
         <h4 className="fw-bold text-dark m-0">Medical Authorization Control Desk</h4>
       </div>
 
+     {/* Policy ID Search Box */}
+<Form 
+  onSubmit={(e) => {
+    e.preventDefault();
+    if (searchPolicyId.trim()) {
+      setSelectedPolicyClaim({ policyid: searchPolicyId.trim() });
+      setShowPolicyModal(true);
+    } else {
+      alert("Please type or paste a Policy ID first.");
+    }
+  }} 
+  className="mb-4" 
+  style={{ maxWidth: "400px" }}
+>
+  <InputGroup>
+    <Form.Control
+      type="text"
+      placeholder="Type or paste Policy ID here..."
+      value={searchPolicyId}
+      onChange={(e) => setSearchPolicyId(e.target.value)}
+      className="border-primary-subtle"
+      style={{ fontSize: "14px" }}
+    />
+    <Button variant="primary" type="submit" style={{ fontSize: "14px" }}>
+      <i className="bi bi-search me-1"></i> Verify Policy
+    </Button>
+  </InputGroup>
+</Form>
+
+     
+     
+     
       {/* Row 1: Client + Search */}
       <div className="row g-3 mb-4">
         <div className="col-md-6">
@@ -876,119 +978,132 @@ useEffect(() => {
                 </thead>
 
   <tbody>
-    {localDrugs?.map((drug, index) => {
-      const total = Number(drug.price || 0) * Number(drug.qty || 0) * Number(drug.period || 1);
-      const rowTotalFormatted = Number(drug.total || total).toFixed(2);
+  {localDrugs?.map((drug, index) => {
+    const total = Number(drug.price || 0) * Number(drug.qty || 0) * Number(drug.period || 1);
+    const rowTotalFormatted = Number(drug.total || total).toFixed(2);
 
-      return (
-        <tr key={drug.id || index}>
-          <td style={{ backgroundColor: "#f0f8ff", width:"240px" }}>
-            <textarea
-              className="form-control fw-medium"
-              rows="2"
-              style={{
-                resize: "none",
-                whiteSpace: "normal",
-                wordBreak: "break-word",
-                minWidth: "220px",
-                backgroundColor: "#e1f5fe",
-                borderColor: "#90caf9",
-                color: "#0d47a1"
-              }}
-              value={drug.itemname || ""}
-              readOnly
-            ></textarea>
-          </td>
+    // 🟢 NEW ACCURATE INT-BASED APPEND CHECK: 
+    // Identifies items added to an existing approved request folder
+    const isNewAppend = authCode && maxOriginalId > 0 && Number(drug.id) > maxOriginalId;
 
-          <td style={{width:"240px"}}>
-            <input type="number" className="form-control" value={drug.price || 0} readOnly />
-          </td>
-          <td style={{width:"240px"}}>
+    return (
+      <tr 
+        key={drug.id || index}
+        className={isNewAppend ? "table-warning bg-warning bg-opacity-10 text-dark-emphasis" : ""}
+      >
+        <td style={{ backgroundColor: isNewAppend ? "#fff3cd" : "#f0f8ff", width: "240px" }} className="position-relative">
+          <textarea
+            className="form-control fw-medium"
+            rows="2"
+            style={{
+              resize: "none",
+              whiteSpace: "normal",
+              wordBreak: "break-word",
+              minWidth: "220px",
+              backgroundColor: isNewAppend ? "#fff3cd" : "#e1f5fe",
+              borderColor: isNewAppend ? "#ffeeba" : "#90caf9",
+              color: isNewAppend ? "#856404" : "#0d47a1"
+            }}
+            value={drug.itemname || ""}
+            readOnly
+          ></textarea>
+          
+          {/* 🆕 Visual Notification Stamp for Appended Line Rows */}
+          {isNewAppend && (
+            <span className="badge bg-warning text-dark font-monospace mt-1 d-inline-block small shadow-sm" style={{ fontSize: "10px" }}>
+              <i className="bi bi-plus-circle-fill me-1"></i> NEW APPEND
+            </span>
+          )}
+        </td>
+
+        <td style={{ width: "240px" }}>
+          <input type="number" className="form-control" value={drug.price || 0} readOnly />
+        </td>
+
+        <td style={{ width: "240px" }}>
           <input
-  type="number"
-  className="form-control"
-  value={drug.qty || ""}
-  disabled={deniedAll}
-onChange={(e) => {
-  const val = e.target.value;
-  const updated = [...localDrugs];
-  
-  // FIX: Create a fresh object reference for this specific index
-  updated[index] = {
-    ...updated[index],
-    qty: val,
-    total: Number(drug.price || 0) * Number(val || 0) * Number(drug.period || 1)
-  };
-  
-  setLocalDrugs(updated);
-}}
+            type="number"
+            className="form-control"
+            value={drug.qty || ""}
+            disabled={deniedAll}
+            onChange={(e) => {
+              const val = e.target.value;
+              const updated = [...localDrugs];
+              
+              updated[index] = {
+                ...updated[index],
+                qty: val,
+                total: Number(drug.price || 0) * Number(val || 0) * Number(drug.period || 1)
+              };
+              
+              setLocalDrugs(updated);
+            }}
+          />
+        </td>
 
-/>          </td>
-          <td style={{width:"240px"}}>
-<input
-  type="number"
-  className="form-control"
-  value={drug.period || ""}
-  disabled={deniedAll}
- onChange={(e) => {
-  const val = e.target.value;
-  const updated = [...localDrugs];
-  
-  // FIX: Create a fresh object reference for this specific index
-  updated[index] = {
-    ...updated[index],
-    period: val,
-    total: Number(drug.price || 0) * Number(drug.qty || 0) * Number(val || 1)
-  };
-  
-  setLocalDrugs(updated);
-}}
+        <td style={{ width: "240px" }}>
+          <input
+            type="number"
+            className="form-control"
+            value={drug.period || ""}
+            disabled={deniedAll}
+            onChange={(e) => {
+              const val = e.target.value;
+              const updated = [...localDrugs];
+              
+              updated[index] = {
+                ...updated[index],
+                period: val,
+                total: Number(drug.price || 0) * Number(drug.qty || 0) * Number(val || 1)
+              };
+              
+              setLocalDrugs(updated);
+            }}
+          />
+        </td>
 
-/>          </td>
-          <td>
-            <input
-              type="text"
-              className="form-control text-end bg-light"
-              value={rowTotalFormatted}
-              readOnly
-            />
-          </td>
+        <td>
+          <input
+            type="text"
+            className="form-control text-end bg-light"
+            value={rowTotalFormatted}
+            readOnly
+          />
+        </td>
 
-          {/* New Denial Reason field */}
-<td>
-  <input
-    type="text"
-    className="form-control truncate"
-    style={{ width: "60px" }} // compact field
-    placeholder="Reason"
-    value={drug.denialreason || ""}
-    readOnly
-    onClick={() => {
-      setActiveDrugIndex(index);
-      setModalOpen(true);
-    }}
-  />
-</td>
+        {/* Denial Reason Field Trigger */}
+        <td>
+          <input
+            type="text"
+            className="form-control truncate"
+            style={{ width: "60px" }}
+            placeholder="Reason"
+            value={drug.denialreason || ""}
+            readOnly
+            onClick={() => {
+              setActiveDrugIndex(index);
+              setModalOpen(true);
+            }}
+          />
+        </td>
+      </tr>
+    );
+  })}
 
-
-{/* Modal */}
-
-        </tr>
-      );
-    })}
-
-                        {/* Grand Total Row */}
-                        <tr className="table-light fw-bold">
-                          <td colSpan="4" className="text-end py-3 px-3 uppercase text-xs tracking-wider text-secondary small">Aggregated Exposure Total:</td>
-                          <td colSpan="2" className="text-end pe-4 text-primary fs-5 font-monospace">
-                            {(() => {
-                              const grandTotal = localDrugs?.reduce((sum, d) => sum + (Number(d.price || 0) * Number(d.qty || 0) * Number(d.period || 1)), 0) || 0;
-                              return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 2 }).format(grandTotal);
-                            })()}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+  {/* Grand Total Calculation Row */}
+  <tr className="table-light fw-bold">
+    <td colSpan="4" className="text-end py-3 px-3 uppercase text-xs tracking-wider text-secondary small">
+      Aggregated Exposure Total:
+    </td>
+    <td colSpan="2" className="text-end pe-4 text-primary fs-5 font-monospace">
+      {(() => {
+        const grandTotal = localDrugs?.reduce((sum, d) => sum + (Number(d.price || 0) * Number(d.qty || 0) * Number(d.period || 1)), 0) || 0;
+        return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 2 }).format(grandTotal);
+      })()}
+    </td>
+  </tr>
+</tbody>
+                 </table>
                   </div>
 
                 {modalOpen && (
@@ -1023,11 +1138,35 @@ onChange={(e) => {
                       }
                     }}>BULK REJECT</button>
                   </div>
+<div className="col-md-6 mt-4 text-start">
+  <label className="form-label small fw-bold text-secondary mb-1">Insurance Clearance Token Auth Code</label>
+  {enrolleeId ? (
+    // 🔗 DYNAMICALLY DECOUPLED BUTTON INTERFACE LINK FOR PORTAL REQUESTS 🔗
+    <button 
+      type="button"
+      className={`form-control btn text-center font-monospace fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm ${authCode ? 'btn-success bg-gradient text-white border-success' : 'btn-outline-primary border-2 border-primary text-primary'}`}
+      style={{ height: "38px" }} 
+      // 🟢 THE WORKFLOW ADJUSTMENT: If code already exists (Append), disable clicks entirely!
+      disabled={maxOriginalId > 0 && Boolean(authCode)} 
+      onClick={() => setShowDigitalPasswordModal(true)}
+    >
+      <i className={`bi ${authCode ? 'bi-shield-check' : 'bi-shield-lock-fill'}`}></i> 
+      {authCode || "Click to Input Password & Generate Code"}
+    </button>
+  ) : (
+    // Your pristine original manual text fallback field
+    <input 
+      type="text" 
+      className="form-control border-2 border-primary fw-bold text-primary font-monospace text-center py-1.5 shadow-none" 
+      placeholder="51/PHIS/XXXXXX/STAFF" 
+      value={authCode} 
+      onChange={(e) => setAuthCode(e.target.value)} 
+    />
+  )}
+</div>
 
-                  <div className="col-md-6 mt-4">
-                    <label className="form-label small fw-bold text-secondary">Insurance Clearance Token Auth Code</label>
-                    <input type="text" className="form-control border-2 border-primary fw-bold text-primary font-monospace text-center py-1.5 shadow-none" placeholder="51/PHIS/XXXXXX/STAFF" value={authCode} onChange={(e) => setAuthCode(e.target.value)} />
-                  </div>
+
+                 
                   <div className="col-md-6 mt-4">
                     <label className="form-label small fw-bold text-secondary">Operational Queue Action Verdict</label>
                     <select className="form-select border-2 fw-bold text-dark py-1.5 shadow-none" value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -1061,6 +1200,64 @@ onChange={(e) => {
         </div>
       )}
 
+   
+         {/* 🔐 ISOLATED DIGITAL PASSPHRASE AUTHENTICATION OVERLAY */}
+      {showDigitalPasswordModal && (
+        <>
+          <div className="modal-backdrop fade show" style={{ zIndex: 1100 }}></div>
+          <div className="modal show d-block" tabIndex="-1" style={{ zIndex: 1110, backgroundColor: "rgba(0,0,0,0.4)" }}>
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: "400px" }}>
+              <div className="modal-content border-0 shadow-lg rounded-3 text-start">
+                <div className="modal-header bg-dark text-white py-2.5 px-3">
+                  <h6 className="modal-title font-monospace m-0 fw-bold">
+                    <i className="bi bi-shield-lock text-warning me-2"></i> Security Verification
+                  </h6>
+                  <button type="button" className="btn-close btn-close-white shadow-none" onClick={() => { setShowDigitalPasswordModal(false); setDigitalUnauthorized(false); }}></button>
+                </div>
+                
+                <form onSubmit={handleDigitalPasswordSubmit}>
+                  <div className="modal-body p-4 bg-light">
+                    {digitalUnauthorized && (
+                      <div className="alert alert-danger py-2 px-3 small border-0 font-monospace fw-semibold mb-3">
+                        ❌ Unauthorized: Invalid verification pin profile.
+                      </div>
+                    )}
+                    <label className="form-label small fw-bold text-secondary mb-1">Enter Security Authorization Password</label>
+                    <input 
+                      type="password" 
+                      className="form-control font-monospace border-2 border-primary text-center fw-bold shadow-none" 
+                      placeholder="••••••" 
+                      value={digitalPassword} 
+                      onChange={(e) => setDigitalPassword(e.target.value)}
+                      required 
+                      autoFocus
+                    />
+                  </div>
+                  <div className="modal-footer bg-white py-2 border-top-0 d-flex justify-content-end gap-2">
+                    <button type="button" className="btn btn-sm btn-secondary font-monospace" onClick={() => { setShowDigitalPasswordModal(false); setDigitalUnauthorized(false); }}>Cancel</button>
+                    <button type="submit" className="btn btn-sm btn-success fw-bold px-3">Generate & Insert Code</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+   {/* Policy Modal Injection */}
+{selectedPolicyClaim && (
+  <Policy 
+    claim={selectedPolicyClaim} 
+    policyId={selectedPolicyClaim.policyid}
+    show={showPolicyModal} 
+    onHide={() => { 
+      setShowPolicyModal(false); 
+      setSelectedPolicyClaim(null); 
+    }} 
+  />
+)}
+
+   
     </div>
   );
 }
