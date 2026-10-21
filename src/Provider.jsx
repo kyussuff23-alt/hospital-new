@@ -4,6 +4,10 @@ import Updatehosp from "./Updatehosp";
 import Registerhosp from "./Registerhosp";
 import * as XLSX from "xlsx";
 
+// ✅ Subcomponents
+import NewRefundModal from "./NewRefundModal";
+import StaleRefundModal from "./StaleRefundModal";
+
 export default function Provider() {
   const [hospitals, setHospitals] = useState([]);
   const [search, setSearch] = useState("");
@@ -12,6 +16,10 @@ export default function Provider() {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [error, setError] = useState("");
   const [isUploadingTariff, setIsUploadingTariff] = useState(false);
+
+  // Modal visibility states for Refund actions
+  const [showNewRefundModal, setShowNewRefundModal] = useState(false);
+  const [showStaleRefundModal, setShowStaleRefundModal] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -230,7 +238,7 @@ async function fetchAllHospitals() {
             data-bs-toggle="dropdown"
             aria-expanded="false"
           >
-            Excel Options
+            Options
           </button>
           <ul className="dropdown-menu shadow-lg border-light-subtle">
             <li>
@@ -249,6 +257,26 @@ async function fetchAllHospitals() {
                 />
               </label>
             </li>
+<li>
+  <button 
+    className="dropdown-item py-2 small font-medium" 
+    type="button"
+    onClick={() => setShowNewRefundModal(true)}
+  >
+    <i className="bi bi-cash-coin me-2 text-success"></i> New Refund
+  </button>
+</li>
+
+<li>
+  <button 
+    className="dropdown-item py-2 small font-medium" 
+    type="button"
+    onClick={() => setShowStaleRefundModal(true)}
+  >
+    <i className="bi bi-receipt me-2 text-warning"></i> Stale Refund
+  </button>
+</li>
+
           </ul>
         </div>
 
@@ -382,6 +410,22 @@ async function fetchAllHospitals() {
           onRegistered={() => fetchHospitals(search)}
         />
       )}
+   
+   {showNewRefundModal && (
+        <NewRefundModal
+          isOpen={showNewRefundModal}
+          onClose={() => setShowNewRefundModal(false)}
+          fetchData={() => search && fetchHospitals(search)}
+        />
+      )}
+
+      {showStaleRefundModal && (
+        <StaleRefundModal
+          isOpen={showStaleRefundModal}
+          onClose={() => setShowStaleRefundModal(false)}
+        />
+      )}
+   
     </div>
   );
 }

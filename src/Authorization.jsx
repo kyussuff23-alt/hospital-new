@@ -217,7 +217,7 @@ const passwordMap = {
   "267789": "tolu",
   "468767": "damilola",
   "345625": "peace",
-    "567844": "bolaji",
+    "567844": "Ruqayat",
   "345623": "toyin"
 };
 
