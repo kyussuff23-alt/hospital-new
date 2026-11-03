@@ -274,6 +274,8 @@ async function handleSubmit(e) {
                     
                     <option value="FairMoney MFB">FairMoney MFB</option>
                     <option value="Lapo Microfinance Bank">Lapo Microfinance Bank</option>
+                    <option value="REMITA">REMITA</option>
+
                   </select>
                 </div>
               </div>
