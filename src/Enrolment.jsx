@@ -4,12 +4,15 @@ import RegisterEnrollee from "./RegisterEnrollee";
 import UpdateEnrollee from "./UpdateEnrollee";
 import * as XLSX from "xlsx";
 import EnrolleeRow from "./EnrolleeRow";
+import ReactivateEnrollee from "./ReactivateEnrollee"; // 👈 1. Import your new modal component
+
 
 export default function Enrolment() {
   const [enrollees, setEnrollees] = useState([]);
   const [selectedEnrollee, setSelectedEnrollee] = useState(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showReactivateModal, setShowReactivateModal] = useState(false); // 👈 2. Visibility state
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
    const pageSize = 20;
@@ -99,37 +102,7 @@ const [jumpPage, setJumpPage] = useState(1); // input box value
 }
 
 async function handleReactivate() {
-  if (!search) {
-    alert("Please enter a Policy ID to reactivate.");
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("mydelete")
-    .select("*")
-    .eq("policyid", search)
-    .single();
-
-  if (error || !data) {
-    alert("⚠️ The enrollee you are trying to restore cannot be found.");
-    return;
-  }
-
-  // Build object without id
-  const { id, ...rowWithoutId } = data;
-
-  const { error: insertError } = await supabase
-    .from("myenrolment")
-    .insert([rowWithoutId]);
-
-  if (insertError) {
-    console.error("Insert into myenrolment failed:", insertError.message);
-    alert("Failed to restore enrollee.");
-    return;
-  }
-
-  await supabase.from("mydelete").delete().eq("policyid", search);
-  fetchEnrollees();
+   setShowReactivateModal(true);
 }
 
  async function fetchEnrollees() {
@@ -514,6 +487,20 @@ async function handleReactivate() {
         />
       )}
 
+     
+     { /* 👈 5. Render your Reactivate Modal component at the bottom with the rest of your modals */}
+      {showReactivateModal && (
+        <ReactivateEnrollee 
+          show={showReactivateModal} 
+          onClose={() => setShowReactivateModal(false)} 
+          onSuccess={() => {
+            setShowReactivateModal(false);
+            fetchEnrollees(); // Refresh the list if an enrollee gets successfully restored
+          }}
+        />
+      )}
+     
+     
       {/* ✅ Update Modal */}
       {showUpdateModal && selectedEnrollee && (
         <UpdateEnrollee
